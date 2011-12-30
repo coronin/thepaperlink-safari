@@ -1,0 +1,258 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<script type="text/javascript" src="jquery171.js"></script>
+<script type="text/javascript">
+
+function eSearch(search_term, tabId) {
+  var url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool=thepaperlink_safari&db=pubmed&term=' + search_term;
+  $.get(url,
+    function (xml) {
+      var pmid = $(xml).find('Id');
+      if (pmid.length === 1) {
+        localStorage.setItem('tabId:' + tabId.toString(), pmid.text());
+      }
+    },
+    'xml'
+  );
+}
+
+function getBinary(file) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', file, false);
+  if (xhr.hasOwnProperty('responseType')) {
+    xhr.responseType = 'arraybuffer';
+  } else {
+    xhr.overrideMimeType('text/plain; charset=x-user-defined');
+  }
+  xhr.send(null);
+  var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
+    mozResponseArrayBuffer = 'mozResponseArrayBuffer' in xhr,
+    bin_data = mozResponseArrayBuffer ? xhr.mozResponseArrayBuffer : responseArrayBuffer ? xhr.response : xhr.responseText;
+  return bin_data;
+}
+
+function sendBinary(url, data, pmid) {
+  try {
+    var xhr = new XMLHttpRequest(),
+      boundary = 'AJAX------------------------AJAX',
+      contentType = "multipart/form-data; boundary=" + boundary,
+      postHead = '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="file"; filename="pmid_' + pmid + '.pdf"\r\n' +
+        'Content-Type: application/octet-stream\r\n\r\n',
+      postTail = '\r\n--' + boundary + '--',
+      tmp = '',
+      abView,
+      i;
+    if (data instanceof ArrayBuffer) {
+      console.log('ArrayBuffer, need View, assume Uint8Array');
+      abView = new Uint8Array(data);
+      if (abView.length < 1000) {
+        return null;
+      }
+      console.log(abView.length);
+      for (i = 0; i < abView.length; i += 1) {
+        tmp += String.fromCharCode(abView[i] & 0xff);
+      }
+      data = postHead + tmp + postTail;
+    } else {
+      data = postHead + tmp + postTail;
+    }
+    if (typeof XMLHttpRequest.prototype.sendAsBinary === 'function') {
+      console.log('built-in support sendAsBinary');
+    } else {
+      console.log('define sendAsBinary');
+      XMLHttpRequest.prototype.sendAsBinary = function (datastr) {
+        function byteValue(x) {
+          return x.charCodeAt(0) & 0xff;
+        }
+        var ords = Array.prototype.map.call(datastr, byteValue);
+        var ui8a = new Uint8Array(ords);
+        this.send(ui8a.buffer);
+      };
+    }
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.sendAsBinary(data);
+    return xhr.responseText;
+  } catch (err) {
+    return null;
+  }
+}
+
+// above, direct copy from Chrome
+
+
+function saveApikeyToLocal(email, apikey) {
+  if (email) {
+    safari.extension.settings.pubmeder_email = email;
+    safari.extension.settings.pubmeder_apikey = apikey;
+  } else {
+    safari.extension.settings.thepaperlink_apikey = apikey;
+  }
+}
+
+function saveOAuthStatusToLocal(content, service) {
+  if (service) {
+    if (safari.extension.settings.oauth_status === undefined) {
+      safari.extension.settings.oauth_status = service;
+    } else if (safari.extension.settings.oauth_status.indexOf(service) === -1) {
+      safari.extension.settings.oauth_status += service + ' ';
+    }
+  }
+}
+
+function get_thepaperlink_json(url) {
+  var apikey = safari.extension.settings.thepaperlink_apikey,
+    pubmeder_apikey = safari.extension.settings.pubmeder_apikey,
+    pubmeder_email = safari.extension.settings.pubmeder_email,
+    pubmeder_ok = 0,
+    p = safari.extension.settings.ezproxy_prefix || '',
+    cloud_op = '',
+    base_uri;
+  if ((pubmeder_apikey !== null) && (pubmeder_email !== null)) {
+    pubmeder_ok = 1;
+  }
+  if (p === 'http://a.b.c/d?url=') {
+    p = '';
+  }
+  if (safari.extension.settings.oauth_status.indexOf('mendeley') > -1) {
+    cloud_op += 'm';
+  }
+  if (safari.extension.settings.oauth_status.indexOf('facebook') > -1) {
+    cloud_op += 'f';
+  }
+  if (safari.extension.settings.oauth_status.indexOf('dropbox') > -1) {
+    cloud_op += 'd';
+  }
+  if (safari.extension.settings.oauth_status.indexOf('douban') > -1) {
+    cloud_op += 'b';
+  }
+  if (apikey === undefined) {
+    apikey = 'G0oasfw0382Wd3oQ0l1LiWzE'; // temp apikey, may disabled in the future
+  }
+  if (safari.extension.settings.rev_proxy) {
+    base_uri = 'http://0.pl4.me';
+  } else {
+    base_uri = 'https://pubget-hrd.appspot.com';
+  }
+  if (url) {
+    $.getJSON(base_uri + url + apikey, function (d) {
+      if (d && (d.count || d.error)) { // good or bad, both got json return
+        if (safari.extension.settings.thepaperlink_apikey) {
+          safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('tj', [
+            d, apikey, pubmeder_ok, pubmeder_apikey, pubmeder_email, cloud_op, base_uri, p ]);
+        } else {
+          safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('tj', [
+            d, '', pubmeder_ok, pubmeder_apikey, pubmeder_email, cloud_op, base_uri, p ]);
+        }
+      } else {
+        safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('except', apikey);
+      }
+    });
+  } else {
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('wrong', 'No valid URL');
+  }
+}
+
+function upload_pdf_as_binary(upload_url, pdf, pmid, apikey, no_email) {
+  var pdf_data = getBinary(pdf), msg, base_uri;
+  msg = sendBinary(upload_url, pdf_data, pmid);
+  if (msg === null) {
+    if (!no_email) {
+      if (safari.extension.settings.rev_proxy) {
+        base_uri = 'http://0.pl4.me';
+      } else {
+        base_uri = 'https://pubget-hrd.appspot.com';
+      }
+      $.post(base_uri + '/',
+        {'pmid': pmid, 'apikey': apikey, 'action': 'email'},
+        function (d) {
+          $('#thepaperlink_A' + pmid).fadeOut('fast'); // shouldn't work
+        }
+      );
+  } }
+}
+
+
+function handleMessage(msg) {
+  switch (msg.name) {
+  case 'url':
+    get_thepaperlink_json(msg.message);
+    break;
+  case 'saveAPI':
+    saveApikeyToLocal(msg.message[0], msg.message[1]);
+    break;
+  case 'saveOAuthStatus':
+    saveOAuthStatusToLocal(msg.message[0], msg.message[1]);
+    break;
+  case 'foundID':
+    var dotCheck = /\./,
+      pmcCheck = /PMC/;
+    if (dotCheck.test(msg.message) || pmcCheck.test(msg.message)) {
+      eSearch(msg.message, safari.application.browserWindow.activeTab);
+    }
+    break;
+  case 'upload_pdf':
+    upload_pdf_as_binary(
+      msg.message[0], msg.message[1], msg.message[2], msg.message[3], msg.message[4])
+    break;
+  }
+}
+safari.application.addEventListener('message', handleMessage, false);
+
+
+function performCommand(event) {
+  if (event.command === 'visit-the-paper-link') {
+    var tab = safari.application.activeBrowserWindow.openTab();
+    if (event.userInfo) {
+      tab.url = 'http://www.thepaperlink.com/?q=' + event.userInfo;
+    } else {
+      tab.url = 'http://www.thepaperlink.com/';
+    }
+  } else if (event.command === 'find-id-on-the-page') {
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('js', [apikey, base_uri]);
+  }
+}
+safari.application.addEventListener('command', performCommand, false);
+
+
+function doValidation(event) {
+  if (event.command === 'visit-the-paper-link' && event.userInfo) {
+    if (event.userInfo.length < 25) {
+      event.target.title = 'Search for "' + event.userInfo + '" on the Paper Link';
+    } else {
+      event.target.title = 'Search for "' + event.userInfo.substr(
+        0, 25).replace(/^\s+|\s+$/g, '') + '..." on the_Paper_Link';
+    }
+  }
+}
+safari.application.addEventListener('validate', doValidation, false);
+
+
+if (safari.extension.settings.tab_open_if_no_apikey && (!safari.extension.settings.pubmeder_apikey || !safari.extension.settings.pubmeder_email)) {
+  alert('to bookmark references into your personal account, please generate the apikey on the following page');
+  var tab = safari.application.activeBrowserWindow.openTab();
+  tab.url = 'http://www.pubmeder.com/registration';
+}
+
+if (safari.extension.settings.tab_open_if_no_apikey && !safari.extension.settings.thepaperlink_apikey) {
+  alert('a temporary apikey is used to access "the Paper Link"; please get your own apikey on the following page');
+  var tab = safari.application.activeBrowserWindow.openTab();
+  tab.url = 'http://www.thepaperlink.com/reg';
+}
+
+$.ajax({
+  url: 'https://pubget-hrd.appspot.com/static/humans.txt',
+  dataType: 'text',
+  timeout: 4000,
+  success: function() { console.log('Hi, you can access our secured server directly.'); },
+  error: function() {
+    console.log('error? force rev_proxy');
+    safari.extension.settings.rev_proxy = true; }
+});
+</script>
+</head>
+<body></body>
+</html>

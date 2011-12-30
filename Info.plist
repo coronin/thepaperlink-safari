@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Author</key>
+	<string>Liang Cai</string>
+	<key>Builder Version</key>
+	<string>6534.52.7</string>
+	<key>CFBundleDisplayName</key>
+	<string>the Paper Link for PubMed</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.LiangCai-cailcn.thepaperlink</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.7</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>Chrome</key>
+	<dict>
+		<key>Context Menu Items</key>
+		<array>
+			<dict>
+				<key>Command</key>
+				<string>visit-the-paper-link</string>
+				<key>Identifier</key>
+				<string>visitThePaperLink</string>
+				<key>Title</key>
+				<string>visit the_Paper_Link</string>
+			</dict>
+			<dict>
+				<key>Command</key>
+				<string>find-id-on-the-page</string>
+				<key>Identifier</key>
+				<string>findIDOnThePage</string>
+				<key>Title</key>
+				<string>find ID on the Page</string>
+			</dict>
+		</array>
+		<key>Database Quota</key>
+		<real>1048576</real>
+		<key>Global Page</key>
+		<string>global.html</string>
+	</dict>
+	<key>Content</key>
+	<dict>
+		<key>Blacklist</key>
+		<array>
+			<string>http://www.ncbi.nlm.nih.gov/pubmed/</string>
+			<string>https://www.ncbi.nlm.nih.gov/pubmed/</string>
+		</array>
+		<key>Scripts</key>
+		<dict>
+			<key>Start</key>
+			<array>
+				<string>content.js</string>
+			</array>
+		</dict>
+		<key>Stylesheets</key>
+		<array>
+			<string>content.css</string>
+		</array>
+	</dict>
+	<key>Description</key>
+	<string>the Paper Link for PubMed - get the pdf link in search</string>
+	<key>ExtensionInfoDictionaryVersion</key>
+	<string>1.0</string>
+	<key>Permissions</key>
+	<dict>
+		<key>Website Access</key>
+		<dict>
+			<key>Include Secure Pages</key>
+			<true/>
+			<key>Level</key>
+			<string>All</string>
+		</dict>
+	</dict>
+	<key>Update Manifest URL</key>
+	<string>https://pubget-hrd.appspot.com/static/thepaperlink-safari.plist</string>
+	<key>Website</key>
+	<string>http://www.thepaperlink.com</string>
+</dict>
+</plist>

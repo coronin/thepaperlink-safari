@@ -1,0 +1,34 @@
+/* Use !important to make sure these styles win over anything the page author specifies. */
+
+.blocked-content {
+  background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgba(90, 90, 90, 0.25)), to(transparent)) !important;
+}
+.blocked-content:hover {
+  background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgba(90, 90, 90, 0.5)), to(rgba(90, 90, 90, 0.25))) !important;
+}
+.blocked-content:active {
+  -webkit-box-shadow: inset rgba(0, 0, 0, 0.9) 0 3px 10px, inset rgba(0, 0, 0, 0.25) 0 -2px 15px !important;
+  background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgba(90, 90, 90, 0.5)), to(rgba(90, 90, 90, 0.75))) !important;
+}
+
+.thepaperlink {
+  background: #e0ecf1;
+  border:2px solid #dedede; border-top:2px solid #eee; border-left:2px solid #eee;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.thepaperlink > a, .thepaperlink > span {
+  margin: 0 6px;
+}
+a.thepaperlink-green {
+  color: green;
+}
+a.thepaperlink-red {
+  color: red;
+}
+.thepaperlink-home {
+  color: grey;
+  text-decoration: none;
+  cursor: pointer;
+}

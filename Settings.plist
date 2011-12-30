@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>Key</key>
+		<string>thepaperlink_apikey</string>
+		<key>Password</key>
+		<false/>
+		<key>Secure</key>
+		<false/>
+		<key>Title</key>
+		<string>the Paper Link access key</string>
+		<key>Type</key>
+		<string>TextField</string>
+	</dict>
+	<dict>
+		<key>Type</key>
+		<string>Separator</string>
+	</dict>
+	<dict>
+		<key>Key</key>
+		<string>pubmeder_email</string>
+		<key>Secure</key>
+		<false/>
+		<key>Title</key>
+		<string>pubmeder email</string>
+		<key>Type</key>
+		<string>TextField</string>
+	</dict>
+	<dict>
+		<key>Key</key>
+		<string>pubmeder_apikey</string>
+		<key>Password</key>
+		<false/>
+		<key>Secure</key>
+		<false/>
+		<key>Title</key>
+		<string>pubmeder apikey</string>
+		<key>Type</key>
+		<string>TextField</string>
+	</dict>
+	<dict>
+		<key>Type</key>
+		<string>Separator</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<true/>
+		<key>Key</key>
+		<string>tab_open_if_no_apikey</string>
+		<key>Title</key>
+		<string>If the key is not valid, open related webpages to obtain</string>
+		<key>Type</key>
+		<string>CheckBox</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<false/>
+		<key>Key</key>
+		<string>disable_contextual_menu</string>
+		<key>Title</key>
+		<string>Disable the contextual menu (when right/two-finger click)</string>
+		<key>Type</key>
+		<string>CheckBox</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<false/>
+		<key>Key</key>
+		<string>rev_proxy</string>
+		<key>Title</key>
+		<string>Visit our reserse proxied site, for improved accessibility</string>
+		<key>Type</key>
+		<string>CheckBox</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<string>http://a.b.c/d?url=</string>
+		<key>Key</key>
+		<string>ezproxy_prefix</string>
+		<key>Title</key>
+		<string>Use ezproxy with prefix</string>
+		<key>Type</key>
+		<string>TextField</string>
+	</dict>
+	<dict>
+		<key>Type</key>
+		<string>Separator</string>
+	</dict>
+	<dict>
+		<key>Key</key>
+		<string>oauth_status</string>
+		<key>Title</key>
+		<string>Enabled external services</string>
+		<key>Type</key>
+		<string>TextField</string>
+	</dict>
+</array>
+</plist>
