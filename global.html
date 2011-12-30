@@ -111,7 +111,7 @@ function get_thepaperlink_json(url) {
     p = safari.extension.settings.ezproxy_prefix || '',
     cloud_op = '',
     base_uri;
-  if ((pubmeder_apikey !== null) && (pubmeder_email !== null)) {
+  if ((pubmeder_apikey !== undefined) && (pubmeder_email !== undefined)) {
     pubmeder_ok = 1;
   }
   if (p === 'http://a.b.c/d?url=') {
@@ -196,7 +196,7 @@ function handleMessage(msg) {
     break;
   case 'upload_pdf':
     upload_pdf_as_binary(
-      msg.message[0], msg.message[1], msg.message[2], msg.message[3], msg.message[4])
+      msg.message[0], msg.message[1], msg.message[2], msg.message[3], msg.message[4]);
     break;
   }
 }
@@ -212,13 +212,28 @@ function performCommand(event) {
       tab.url = 'http://www.thepaperlink.com/';
     }
   } else if (event.command === 'find-id-on-the-page') {
-    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('js', [apikey, base_uri]);
+    var base_uri,
+      apikey = safari.extension.settings.thepaperlink_apikey;
+    if (apikey === undefined) {
+      apikey = 'G0oasfw0382Wd3oQ0l1LiWzE'; // temp apikey, may disabled in the future
+    }
+    if (safari.extension.settings.rev_proxy) {
+      base_uri = 'http://0.pl4.me';
+    } else {
+      base_uri = 'https://pubget-hrd.appspot.com';
+    }
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('js', [
+      apikey, base_uri ]);
   }
 }
 safari.application.addEventListener('command', performCommand, false);
 
 
 function doValidation(event) {
+  if (safari.extension.settings.disable_contextual_menu) {
+    event.preventDefault();
+    return;
+  }
   if (event.command === 'visit-the-paper-link' && event.userInfo) {
     if (event.userInfo.length < 25) {
       event.target.title = 'Search for "' + event.userInfo + '" on the Paper Link';

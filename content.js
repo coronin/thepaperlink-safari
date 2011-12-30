@@ -88,8 +88,10 @@ function getPmid(zone, num) {
 }
 
 function get_Json(pmids) {
-  var i, need_insert = 1,
-    url = '/api?flash=yes&a=safari1&pmid=' + pmids;
+  var i, div,
+    need_insert = 1,
+    url = '/api?flash=yes&a=safari1&pmid=' + pmids,
+    loading_span = '<span style="font-weight:normal;font-style:italic"> fetching data from "the Paper Link"</span>&nbsp;&nbsp;<img src="https://pubget-hrd.appspot.com/static/loadingLine.gif" width="16" height="11" alt="loading" />';
   if (search_term) {
     url += '&w=' + search_term + '&apikey=';
   } else {
@@ -100,7 +102,7 @@ function get_Json(pmids) {
       old_title = t('h2')[i].innerHTML;
       title_pos = i;
       need_insert = 0;
-      t('h2')[i].innerHTML = old_title + '<span style="font-weight:normal;font-style:italic"> ... loading data from "the Paper Link"</span>&nbsp;&nbsp;<img src="https://pubget-hrd.appspot.com/static/loadingLine.gif" width="16" height="11" alt="loading icon on the server" />';
+      t('h2')[i].innerHTML = old_title + loading_span;
     }
   }
   if (need_insert) {
@@ -216,15 +218,14 @@ function gotMessage(msg) {
   case 'js':
     if (window.location.protocol !== 'https:') {
       localStorage.setItem('thePaperLink_pubget_js_key', msg.message[0]);
-      localStorage.setItem('thePaperLink_pubget_js_base', msg.message[1]);
+      localStorage.setItem('thePaperLink_pubget_js_base', msg.message[1] + '/');
       if (!$('__tr_display')) {
         var jsClient = document.createElement('script');
         jsClient.setAttribute('type', 'text/javascript');
-        jsClient.setAttribute('src', msg.message[1] + 'js?y=' + (Math.random()));
+        jsClient.setAttribute('src', msg.message[1] + '/js?y=' + (Math.random()));
         page_body.appendChild(jsClient);
       }
     } else { alert('this is a secure page, js client not working yet'); }
-    sendResponse({});
     break;
   case 'tj':
     var div, i, j, k, peaks,
@@ -253,7 +254,7 @@ function gotMessage(msg) {
       page_body.appendChild(peaks);
     }
     if (pubmeder) {
-      bookmark_div = '<div class="thepaperlink" style="margin-left:10px;font-size:80%;font-weight:normal"><span id="thepaperlink_saveAll" onclick="saveIt_pubmeder(\'' + pmids + '\',\'' + save_key + '\',\'' + save_email + '\')">pubmeder&nbsp;all</span></div>';
+      bookmark_div = '<div class="thepaperlink" style="margin-left:10px;font-size:80%;font-weight:normal;cursor:pointer"><span id="thepaperlink_saveAll" onclick="saveIt_pubmeder(\'' + pmids + '\',\'' + save_key + '\',\'' + save_email + '\')">pubmeder&nbsp;all</span></div>';
     }
     if (pubmeder && old_title) {
       t('h2')[title_pos].innerHTML = old_title + bookmark_div;

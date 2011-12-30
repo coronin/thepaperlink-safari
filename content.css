@@ -1,5 +1,3 @@
-/* Use !important to make sure these styles win over anything the page author specifies. */
-
 .blocked-content {
   background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgba(90, 90, 90, 0.25)), to(transparent)) !important;
 }
@@ -11,24 +9,28 @@
   background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgba(90, 90, 90, 0.5)), to(rgba(90, 90, 90, 0.75))) !important;
 }
 
+/* Use !important to make sure these styles win over anything the page author specifies. */
+
 .thepaperlink {
-  background: #e0ecf1;
-  border:2px solid #dedede; border-top:2px solid #eee; border-left:2px solid #eee;
-  padding: 2px 4px;
-  border-radius: 4px;
-  display: inline-block;
+  background: #e0ecf1 !important;
+  border:2px solid #dedede !important;
+  border-top:2px solid #eee !important;
+  border-left:2px solid #eee !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+  display: inline-block !important;
 }
 .thepaperlink > a, .thepaperlink > span {
-  margin: 0 6px;
+  margin: 0 6px !important;
 }
 a.thepaperlink-green {
-  color: green;
+  color: green !important;
 }
 a.thepaperlink-red {
-  color: red;
+  color: red !important;
 }
 .thepaperlink-home {
-  color: grey;
-  text-decoration: none;
-  cursor: pointer;
+  color: grey !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
 }
