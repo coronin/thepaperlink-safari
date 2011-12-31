@@ -58,16 +58,6 @@
 		<key>DefaultValue</key>
 		<false/>
 		<key>Key</key>
-		<string>disable_contextual_menu</string>
-		<key>Title</key>
-		<string>Disable the contextual menu (when right/two-finger click)</string>
-		<key>Type</key>
-		<string>CheckBox</string>
-	</dict>
-	<dict>
-		<key>DefaultValue</key>
-		<false/>
-		<key>Key</key>
 		<string>rev_proxy</string>
 		<key>Title</key>
 		<string>Visit our reserse proxied site, for improved accessibility</string>

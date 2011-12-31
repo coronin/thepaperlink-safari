@@ -218,14 +218,14 @@ function gotMessage(msg) {
   case 'js':
     if (window.location.protocol !== 'https:') {
       localStorage.setItem('thePaperLink_pubget_js_key', msg.message[0]);
-      localStorage.setItem('thePaperLink_pubget_js_base', msg.message[1] + '/');
+      localStorage.setItem('thePaperLink_pubget_js_base', msg.message[1]);
       if (!$('__tr_display')) {
         var jsClient = document.createElement('script');
         jsClient.setAttribute('type', 'text/javascript');
-        jsClient.setAttribute('src', msg.message[1] + '/js?y=' + (Math.random()));
+        jsClient.setAttribute('src', msg.message[1] + 'js?y=' + (Math.random()));
         page_body.appendChild(jsClient);
       }
-    } else { alert('this is a secure page, js client not working yet'); }
+    } else { console.log('a secure page, js client will not work'); }
     break;
   case 'tj':
     var div, i, j, k, peaks,
