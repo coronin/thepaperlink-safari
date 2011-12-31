@@ -109,6 +109,7 @@ function get_thepaperlink_json(url) {
     pubmeder_email = safari.extension.settings.pubmeder_email,
     pubmeder_ok = 0,
     p = safari.extension.settings.ezproxy_prefix || '',
+    oauth_status = safari.extension.settings.oauth_status || '',
     cloud_op = '',
     base_uri;
   if ((pubmeder_apikey !== undefined) && (pubmeder_email !== undefined)) {
@@ -117,16 +118,16 @@ function get_thepaperlink_json(url) {
   if (p === 'http://a.b.c/d?url=') {
     p = '';
   }
-  if (safari.extension.settings.oauth_status.indexOf('mendeley') > -1) {
+  if (oauth_status.indexOf('mendeley') > -1) {
     cloud_op += 'm';
   }
-  if (safari.extension.settings.oauth_status.indexOf('facebook') > -1) {
+  if (oauth_status.indexOf('facebook') > -1) {
     cloud_op += 'f';
   }
-  if (safari.extension.settings.oauth_status.indexOf('dropbox') > -1) {
+  if (oauth_status.indexOf('dropbox') > -1) {
     cloud_op += 'd';
   }
-  if (safari.extension.settings.oauth_status.indexOf('douban') > -1) {
+  if (oauth_status.indexOf('douban') > -1) {
     cloud_op += 'b';
   }
   if (apikey === undefined) {
@@ -245,13 +246,13 @@ safari.application.addEventListener('validate', doValidation, false);
 
 
 if (safari.extension.settings.tab_open_if_no_apikey && (!safari.extension.settings.pubmeder_apikey || !safari.extension.settings.pubmeder_email)) {
-  alert('to bookmark references into your personal account, please generate the apikey on the following page');
+  alert('to bookmark references into your personal account,\nplease generate the apikey at www.pubmeder.com');
   var tab = safari.application.activeBrowserWindow.openTab();
   tab.url = 'http://www.pubmeder.com/registration';
 }
 
 if (safari.extension.settings.tab_open_if_no_apikey && !safari.extension.settings.thepaperlink_apikey) {
-  alert('a temporary apikey is used to access "the Paper Link"; please get your own apikey on the following page');
+  alert('to accelerate your access speed to "the Paper Link",\nplease obtain your own apikey at www.thepaperlink.com');
   var tab = safari.application.activeBrowserWindow.openTab();
   tab.url = 'http://www.thepaperlink.com/reg';
 }
