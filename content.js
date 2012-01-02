@@ -89,7 +89,7 @@ function getPmid(zone, num) {
 
 function get_Json(pmids) {
   var i, div,
-    need_insert = 1,
+    need_insert = true,
     url = '/api?flash=yes&a=safari1&pmid=' + pmids,
     loading_span = '<span style="font-weight:normal;font-style:italic"> fetching data from "the Paper Link"</span>&nbsp;&nbsp;<img src="https://pubget-hrd.appspot.com/static/loadingLine.gif" width="16" height="11" alt="loading" />';
   if (search_term) {
@@ -101,7 +101,7 @@ function get_Json(pmids) {
     if (t('h2')[i].className === 'result_count') {
       old_title = t('h2')[i].innerHTML;
       title_pos = i;
-      need_insert = 0;
+      need_insert = false;
       t('h2')[i].innerHTML = old_title + loading_span;
     }
   }
@@ -246,11 +246,7 @@ function gotMessage(msg) {
     if (!$('paperlink2_display')) {
       peaks = document.createElement('script');
       peaks.setAttribute('type', 'text/javascript');
-      if (base_uri === 'http://0.pl4.me') {
-        peaks.setAttribute('src', 'http://0.pl4.me/jss?y=' + (Math.random()));
-      } else {
-        peaks.setAttribute('src', 'https://pubget-hrd.appspot.com/jss?y=' + (Math.random()));
-      }
+      peaks.setAttribute('src', base_uri + '/jss?y=' + (Math.random()));
       page_body.appendChild(peaks);
     }
     if (pubmeder) {

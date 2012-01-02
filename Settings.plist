@@ -3,54 +3,22 @@
 <plist version="1.0">
 <array>
 	<dict>
-		<key>Key</key>
-		<string>thepaperlink_apikey</string>
-		<key>Password</key>
-		<false/>
-		<key>Secure</key>
-		<false/>
-		<key>Title</key>
-		<string>the Paper Link access key</string>
-		<key>Type</key>
-		<string>TextField</string>
-	</dict>
-	<dict>
-		<key>Type</key>
-		<string>Separator</string>
-	</dict>
-	<dict>
-		<key>Key</key>
-		<string>pubmeder_email</string>
-		<key>Secure</key>
-		<false/>
-		<key>Title</key>
-		<string>pubmeder email</string>
-		<key>Type</key>
-		<string>TextField</string>
-	</dict>
-	<dict>
-		<key>Key</key>
-		<string>pubmeder_apikey</string>
-		<key>Password</key>
-		<false/>
-		<key>Secure</key>
-		<false/>
-		<key>Title</key>
-		<string>pubmeder apikey</string>
-		<key>Type</key>
-		<string>TextField</string>
-	</dict>
-	<dict>
-		<key>Type</key>
-		<string>Separator</string>
-	</dict>
-	<dict>
 		<key>DefaultValue</key>
 		<true/>
 		<key>Key</key>
 		<string>tab_open_if_no_apikey</string>
 		<key>Title</key>
-		<string>If the key is not valid, open related webpages to obtain</string>
+		<string>Obtain the access permission to personalized services</string>
+		<key>Type</key>
+		<string>CheckBox</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<false/>
+		<key>Key</key>
+		<string>no_context_menu</string>
+		<key>Title</key>
+		<string>Do not shown the contextual menu (not ready)</string>
 		<key>Type</key>
 		<string>CheckBox</string>
 	</dict>
@@ -60,9 +28,13 @@
 		<key>Key</key>
 		<string>rev_proxy</string>
 		<key>Title</key>
-		<string>Visit our reserse proxied site, for improved accessibility</string>
+		<string>Use our reserse proxied server (improved accessibility)</string>
 		<key>Type</key>
 		<string>CheckBox</string>
+	</dict>
+	<dict>
+		<key>Type</key>
+		<string>Separator</string>
 	</dict>
 	<dict>
 		<key>DefaultValue</key>
@@ -70,7 +42,7 @@
 		<key>Key</key>
 		<string>ezproxy_prefix</string>
 		<key>Title</key>
-		<string>Use ezproxy with prefix</string>
+		<string>Use ezproxy with prefix (be cautious)</string>
 		<key>Type</key>
 		<string>TextField</string>
 	</dict>
