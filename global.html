@@ -14,84 +14,6 @@ var DEBUG = false,
   channel_token = '',
   broadcast_loaded = 0;
 
-function eSearch(search_term) {
-  var url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool=thepaperlink_safari&db=pubmed&term=' + search_term;
-  $.get(url,
-    function (xml) {
-      var pmid = $(xml).find('Id');
-      if (pmid.length === 1) {
-        save_visited_ID( pmid.text() );
-      }
-    },
-    'xml'
-  );
-}
-
-function getBinary(file) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', file, false);
-  if (xhr.hasOwnProperty('responseType')) {
-    xhr.responseType = 'arraybuffer';
-  } else {
-    xhr.overrideMimeType('text/plain; charset=x-user-defined');
-  }
-  xhr.send(null);
-  var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
-    mozResponseArrayBuffer = 'mozResponseArrayBuffer' in xhr,
-    bin_data = mozResponseArrayBuffer ? xhr.mozResponseArrayBuffer : responseArrayBuffer ? xhr.response : xhr.responseText;
-  return bin_data;
-}
-
-function sendBinary(url, data, pmid) {
-  try {
-    var xhr = new XMLHttpRequest(),
-      boundary = 'AJAX------------------------AJAX',
-      contentType = "multipart/form-data; boundary=" + boundary,
-      postHead = '--' + boundary + '\r\n' +
-        'Content-Disposition: form-data; name="file"; filename="pmid_' + pmid + '.pdf"\r\n' +
-        'Content-Type: application/octet-stream\r\n\r\n',
-      postTail = '\r\n--' + boundary + '--',
-      tmp = '',
-      abView,
-      i;
-    if (data instanceof ArrayBuffer) {
-      DEBUG && console.log('ArrayBuffer, need View, assume Uint8Array');
-      abView = new Uint8Array(data);
-      if (abView.length < 1000) {
-        return null;
-      }
-      DEBUG && console.log(abView.length);
-      for (i = 0; i < abView.length; i += 1) {
-        tmp += String.fromCharCode(abView[i] & 0xff);
-      }
-      data = postHead + tmp + postTail;
-    } else {
-      data = postHead + tmp + postTail;
-    }
-    if (typeof XMLHttpRequest.prototype.sendAsBinary === 'function') {
-      DEBUG && console.log('built-in support sendAsBinary');
-    } else {
-      DEBUG && console.log('define sendAsBinary');
-      XMLHttpRequest.prototype.sendAsBinary = function (datastr) {
-        function byteValue(x) {
-          return x.charCodeAt(0) & 0xff;
-        }
-        var ords = Array.prototype.map.call(datastr, byteValue);
-        var ui8a = new Uint8Array(ords);
-        this.send(ui8a.buffer);
-      };
-    }
-    xhr.open('POST', url, true);
-    xhr.setRequestHeader("Content-Type", contentType);
-    xhr.sendAsBinary(data);
-    return xhr.responseText;
-  } catch (err) {
-    return null;
-  }
-}
-
-// above, direct copy from Chrome
-
 function saveApikeyToLocal(email, apikey) {
   if (email) {
     localStorage.setItem('pubmeder_email', email);
@@ -153,39 +75,11 @@ function get_thepaperlink_json(relative_url) {
       } else {
         safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('except', apikey);
       }
+    }).error(function () {
+      safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('except', apikey);
     });
   } else {
     safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('wrong', 'No valid URL');
-  }
-}
-
-function upload_pdf_as_binary(upload_url, pdf, pmid, apikey, no_email) {
-  var pdf_data = getBinary(pdf), msg,
-    base = 'https://pubget-hrd.appspot.com';
-  msg = sendBinary(upload_url, pdf_data, pmid);
-  if (msg === null) {
-    if (!no_email) {
-      if (safari.extension.settings.rev_proxy) {
-        base = 'http://0.pl4.me';
-      }
-      $.post(base + '/',
-        {'pmid': pmid, 'apikey': apikey, 'action': 'email'},
-        function (d) {
-          $('#thepaperlink_A' + pmid).fadeOut('fast'); // shouldn't work
-        }
-      );
-  } }
-}
-
-function save_visited_ID(new_id) {
-  var id_found = localStorage.getItem('id_found');
-  if (id_found === null) {
-    localStorage.setItem('id_found', new_id);
-  } else if (id_found.indexOf(new_id) === -1) {
-    localStorage.setItem('id_found', id_found + ' ' + new_id);
-  }
-  if (id_found && id_found.split(' ').length > 11) {
-    saveIt_pubmeder( localStorage.getItem('id_found').replace(/\s+/g, ',') );
   }
 }
 
@@ -216,7 +110,114 @@ function saveIt_pubmeder(pmid) {
       }
       localStorage.setItem('id_found', '');
     }
+  }).error(function () {
+    var date = new Date();
+    localStorage.setItem('pubmed_' + pmid, date.getTime());
   });
+}
+
+function save_visited_ID(new_id) {
+  var id_found = localStorage.getItem('id_found');
+  if (id_found === null) {
+    localStorage.setItem('id_found', new_id);
+  } else if (id_found.indexOf(new_id) === -1) {
+    localStorage.setItem('id_found', id_found + ' ' + new_id);
+  }
+  if (id_found && id_found.split(' ').length > 11) {
+    saveIt_pubmeder( localStorage.getItem('id_found').replace(/\s+/g, ',') );
+  }
+}
+
+function eSearch(search_term) {
+  var url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool=thepaperlink_safari&db=pubmed&term=' + search_term;
+  $.get(url,
+    function (xml) {
+      var pmid = $(xml).find('Id');
+      if (pmid.length === 1) {
+        save_visited_ID( pmid.text() );
+      }
+    },
+    'xml'
+  ).error(function () {
+    DEBUG && console.log('eSearch failed, do nothing');
+  });
+}
+
+function email_abstract(a, b) {
+  var aKey = 'email_' + a + '_' + b;
+  $.post(base + '/',
+    {'apikey': a, 'pmid': b, 'action': 'email'},
+    function (d) {
+      localStorage.removeItem(aKey);
+      DEBUG && console.log('post /, action email: ' + d);
+    }
+  ).error(function () {
+    DEBUG && console.log('email failed, save for later');
+    var date = new Date();
+    localStorage.setItem(aKey, date.getTime());
+  });
+}
+
+function sendBinary(aB, pmid, upload, no_email) {
+  try {
+    var xhr = new XMLHttpRequest(),
+      boundary = 'AJAX------------------------AJAX',
+      contentType = "multipart/form-data; boundary=" + boundary,
+      postHead = '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="file"; filename="pmid_' + pmid + '.pdf"\r\n' +
+        'Content-Type: application/octet-stream\r\n\r\n',
+      postTail = '\r\n--' + boundary + '--',
+      abView = new Uint8Array(aB),
+      post_data = postHead;
+    console.log('__ download the file size ' + abView.length + ', prepare uploading');
+    if (abView.length < 1000) {
+      return;
+    }
+    for (i = 0; i < abView.length; i += 1) {
+      post_data += String.fromCharCode(abView[i] & 0xff);
+    }
+    post_data += postTail;
+    if (typeof XMLHttpRequest.prototype.sendAsBinary === 'function') {
+      DEBUG && console.log('sendAsBinary support is built-in');
+    } else {
+      DEBUG && console.log('define sendAsBinary');
+      XMLHttpRequest.prototype.sendAsBinary = function (datastr) {
+        function byteValue(x) {
+          return x.charCodeAt(0) & 0xff;
+        }
+        var ords = Array.prototype.map.call(datastr, byteValue);
+        var ui8a = new Uint8Array(ords);
+        this.send(ui8a.buffer);
+      };
+    }
+    xhr.open('POST', upload, true);
+    xhr.onload = function () {
+      console.log('__ upload the file to the server with status: ' + xhr.status);
+      if (xhr.responseText === null) {
+        DEBUG && console.log('email_pdf failed, just email the abstract');
+        if (!no_email) {
+          email_abstract(localStorage.getItem('thepaperlink_apikey'), pmid);
+        }
+      }
+    };
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.sendAsBinary(post_data);
+  } catch (err) {
+    DEBUG && console.log(err);
+  }
+}
+
+function getBinary(file, pmid, upload, no_email) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', file, true);
+  xhr.responseType = 'arraybuffer'; // Synchronous requests cannot have XMLHttpRequest.responseType set
+  xhr.onload = function () {
+    var aB = xhr.response; // not xhr.responseText
+    if (aB) {
+      sendBinary(aB, pmid, upload, no_email);
+    }
+  };
+  xhr.send(null);
 }
 
 function queue_scholar_title() {
@@ -262,16 +263,18 @@ function parse_url(pmid, url) {
           base = 'http://0.pl4.me';
         }
         $.post(base + '/',
-          {'apikey': req_key, 'pmid': pmid, 'pii_link': h[1]},
+          {'apikey': localStorage.getItem('thepaperlink_apikey') || 'G0oasfw0382Wd3oQ0l1LiWzE',
+            'pmid': pmid, 'pii_link': h[1]},
           function (d) {
             DEBUG && console.log('post pii_link (empty is a success): ' + d);
           }
         );
-        return;
       }
     },
     'html'
-  );
+  ).error(function () {
+    DEBUG && console.log('parse_url failed, do nothing');
+  });
 }
 
 function scholar_title(pmid, t) {
@@ -306,7 +309,8 @@ function scholar_title(pmid, t) {
             base = 'http://0.pl4.me';
           }
           $.post(base + '/',
-            {'apikey': req_key, 'pmid': pmid, 'g_num': g_num[1], 'g_link': g_link[1]},
+            {'apikey': localStorage.getItem('thepaperlink_apikey') || 'G0oasfw0382Wd3oQ0l1LiWzE',
+              'pmid': pmid, 'g_num': g_num[1], 'g_link': g_link[1]},
             function (d) {
               DEBUG && console.log('post g_num and g_link (empty is a success): ' + d);
             }
@@ -318,7 +322,11 @@ function scholar_title(pmid, t) {
         'g_scholar', [pmid, 0, 0] );
     },
     'html'
-  );
+  ).error(function () {
+    DEBUG && console.log('scholar_title failed');
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+      'g_scholar', [pmid, 0, 0] );
+  });
 }
 
 function load_goog_channel() {
@@ -415,6 +423,18 @@ $.ajax({
     safari.extension.settings.rev_proxy = true; }
 });
 
+for (i = 0; i < localStorage.length; i += 1) {
+  aKey = localStorage.key(i);
+  if (aKey && aKey.substr(0,6) === 'email_') {
+    aVal = aKey.split('_');
+    email_abstract(aVal[1], aVal[2]);
+  } else if (aKey && aKey.substr(0,7) === 'pubmed_') {
+    aVal = aKey.split('_');
+    localStorage.removeItem(aKey);
+    saveIt_pubmeder(aVal[1]);
+  }
+}
+
 $(document).ready(function () {
   if (!broadcast_loaded) {
     load_broadcast();
@@ -483,8 +503,11 @@ function handleMessage(msg) {
     break;
 
   case 'upload_pdf':
-    upload_pdf_as_binary(
-      msg.message[0], msg.message[1], msg.message[2], msg.message[3], msg.message[4]);
+    // msg.message: eventData, pdf, pmid, 1
+    // getBinary(file, pmid, upload, no_email)
+    if (localStorage.getItem('thepaperlink_apikey')) {
+      getBinary(msg.message[1], msg.message[2], msg.message[0], msg.message[3]);
+    }
     break;
 
   case 'pmid_title':
@@ -541,16 +564,14 @@ function performCommand(event) {
       tab.url = 'http://www.thepaperlink.com/';
     }
   } else if (event.command === 'find-id-on-the-page') {
-    var base = 'https://pubget-hrd.appspot.com',
-      apikey = localStorage.getItem('thepaperlink_apikey');
-    if (apikey === null) {
-      apikey = 'G0oasfw0382Wd3oQ0l1LiWzE'; // temp apikey, may disabled in the future
-    }
+    var base = 'https://pubget-hrd.appspot.com';
     if (safari.extension.settings.rev_proxy) {
       base = 'http://0.pl4.me';
     }
     safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('js', [
-      apikey, base + '/' ]);
+      localStorage.getItem('thepaperlink_apikey') || 'G0oasfw0382Wd3oQ0l1LiWzE',
+      base + '/'
+    ]);
   }
 }
 safari.application.addEventListener('command', performCommand, false);

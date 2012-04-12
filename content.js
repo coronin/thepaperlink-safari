@@ -10,7 +10,6 @@ var DEBUG = false,
   noRun = 0,
   page_d = document,
   page_url = page_d.URL,
-  page_body = page_d.body,
   loading_gif = 'http://www.thepaperlink.com/static/loadingLine.gif',
   pmids = '',
   pmidArray = [],
@@ -188,7 +187,24 @@ function run() {
   }
 }
 
+function load_thepaperlink_api() {
+  if (!$('apikey')) {
+    setTimeout(load_thepaperlink_api, 500);
+    return;
+  }
+  var apikey = $('apikey').innerHTML,
+    cloud_op = $('cloud_op').innerHTML;
+  a_proxy('saveAPI', ['', apikey]);
+  a_proxy('save_cloud_op', cloud_op);
+}
+
 function bigBoss() {
+  if ($('_thepaperlink_client_status')) {
+    $('_thepaperlink_client_status').innerHTML = '1';
+  }
+  if ($('_thepaperlink_client_modify_it')) {
+    $('_thepaperlink_client_modify_it').innerHTML = 'the browser you are using is good for that';
+  }
   if (page_url === 'http://thepaperlink.appspot.com/reg'
     || page_url === 'https://thepaperlink.appspot.com/reg'
     || page_url === 'http://pubget-hrd.appspot.com/reg'
@@ -196,13 +212,7 @@ function bigBoss() {
     || page_url === 'http://www.thepaperlink.com/reg'
     || page_url === 'http://www.thepaperlink.net/reg'
     || page_url === 'http://0.pl4.me/reg') {
-    var apikey = $('apikey').innerHTML,
-      cloud_op = $('cloud_op').innerHTML;
-    a_proxy('saveAPI', ['', api]);
-    a_proxy('save_cloud_op', cloud_op);
-    if ($('client_modify_it')) {
-      $('client_modify_it').innerHTML = 'the browser you are using now is all set for that';
-    }
+    load_thepaperlink_api(); // strange, just like DOMContentLoaded is not working
     return;
   } else if (page_url === 'http://pubmeder.appspot.com/registration'
     || page_url === 'https://pubmeder.appspot.com/registration'
@@ -225,7 +235,7 @@ function bigBoss() {
   } else if (page_url.indexOf('://www.ncbi.nlm.nih.gov/pubmed') === -1
     && page_url.indexOf('://www.ncbi.nlm.nih.gov/sites/entrez?db=pubmed&') === -1
     && page_url.indexOf('://www.ncbi.nlm.nih.gov/sites/entrez') === -1) {
-    var ID = parse_id(page_body.textContent) || parse_id(page_body.innerHTML);
+    var ID = parse_id(page_d.body.textContent) || parse_id(page_d.body.innerHTML);
     if (ID !== null && ID[1] !== '999999999') {
       DEBUG && console.log('non-ncbi site, got ID ' + ID[1]);
       a_proxy('sendID', ID[1]);
@@ -344,10 +354,13 @@ function gotMessage(msg) {
       p = msg.message[6],
       bookmark_div = '<div id="css_loaded" class="thepaperlink" style="margin-left:10px;font-size:80%;font-weight:normal;cursor:pointer"> ';
 
-    if (r.error) {
+    if (r && r.error) {
       t('h2')[title_pos].innerHTML = old_title +
         ' <span style="font-size:14px;font-weight:normal;color:red">"the Paper Link" error ' +
         uneval(r.error) + '</span>';
+      break;
+    }
+    if (!r || !r.count) {
       break;
     }
     if (pubmeder) {
@@ -423,9 +436,9 @@ function gotMessage(msg) {
             pdf = $('thepaperlink_pdf' + pmid).href,
             no_email_span = $('thepaperlink_save' + pmid).className;
           if ( (' ' + no_email_span + ' ').indexOf(' no_email ') > -1 ) {
-            a_proxy('upload_pdf', [eventData, pdf, pmid, tpl, 1]);
+            a_proxy('upload_pdf', [eventData, pdf, pmid, 1]);
           } else {
-            a_proxy('upload_pdf', [eventData, pdf, pmid, tpl, 0]);
+            a_proxy('upload_pdf', [eventData, pdf, pmid, 0]);
             try {
               $('thepaperlink_D' + pmid).setAttribute('class', 'thepaperlink_Off');
             } catch (err) {
@@ -456,6 +469,9 @@ function gotMessage(msg) {
     break;
 
   case 'about_us_page':
+    if (!$('client_title') || !$('client_content')) {
+      break;
+    }
     var apikey = msg.message[0],
       pubmeder_ok = msg.message[1],
       cloud_op = msg.message[2],
@@ -518,7 +534,9 @@ function gotMessage(msg) {
       div_html += '<li>your library supports ezproxy? your setting is to use ' +
         ezproxy_prefix + '</li>';
     }
-    $('firefox_note').innerHTML = '';
+    if ($('firefox_note')) {
+      $('firefox_note').innerHTML = '';
+    }
     $('client_title').innerHTML = 'Instruction for Safari Extension';
     $('client_content').innerHTML = div_html +
       '<li>More at Safari Preferences <i>(command + ,)</i> Extensions section</li></ul>';
