@@ -5,7 +5,7 @@
 	<key>Author</key>
 	<string>Liang Cai</string>
 	<key>Builder Version</key>
-	<string>6534.52.7</string>
+	<string>6534.55.3</string>
 	<key>CFBundleDisplayName</key>
 	<string>the Paper Link for PubMed</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.7.2</string>
+	<string>1.2.1</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>Chrome</key>
@@ -62,7 +62,7 @@
 		</array>
 	</dict>
 	<key>Description</key>
-	<string>the Paper Link for PubMed - get the pdf link in search</string>
+	<string>Add direct PDF link; display F1000 scores, Impact Factor, Peaks and much more...</string>
 	<key>ExtensionInfoDictionaryVersion</key>
 	<string>1.0</string>
 	<key>Permissions</key>

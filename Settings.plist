@@ -4,21 +4,11 @@
 <array>
 	<dict>
 		<key>DefaultValue</key>
-		<true/>
+		<false/>
 		<key>Key</key>
 		<string>tab_open_if_no_apikey</string>
 		<key>Title</key>
 		<string>Obtain the access permission to personalized services</string>
-		<key>Type</key>
-		<string>CheckBox</string>
-	</dict>
-	<dict>
-		<key>DefaultValue</key>
-		<false/>
-		<key>Key</key>
-		<string>no_context_menu</string>
-		<key>Title</key>
-		<string>Do not shown the contextual menu (not ready)</string>
 		<key>Type</key>
 		<string>CheckBox</string>
 	</dict>

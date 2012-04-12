@@ -1,9 +1,17 @@
-<!DOCTYPE HTML>
-<html>
+<!DOCTYPE HTML><html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src="jquery171.js"></script>
+<script type="text/javascript" src="jquery172min.js"></script>
 <script type="text/javascript">
+
+var DEBUG = false,
+  alldigi = /^\d+$/,
+  dd = document,
+  scholar_count = 0;
+  scholar_run = 0;
+  scholar_queue = [],
+  channel_token = '',
+  broadcast_loaded = 0;
 
 function eSearch(search_term) {
   var url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool=thepaperlink_safari&db=pubmed&term=' + search_term;
@@ -46,12 +54,12 @@ function sendBinary(url, data, pmid) {
       abView,
       i;
     if (data instanceof ArrayBuffer) {
-      console.log('ArrayBuffer, need View, assume Uint8Array');
+      DEBUG && console.log('ArrayBuffer, need View, assume Uint8Array');
       abView = new Uint8Array(data);
       if (abView.length < 1000) {
         return null;
       }
-      console.log(abView.length);
+      DEBUG && console.log(abView.length);
       for (i = 0; i < abView.length; i += 1) {
         tmp += String.fromCharCode(abView[i] & 0xff);
       }
@@ -60,9 +68,9 @@ function sendBinary(url, data, pmid) {
       data = postHead + tmp + postTail;
     }
     if (typeof XMLHttpRequest.prototype.sendAsBinary === 'function') {
-      console.log('built-in support sendAsBinary');
+      DEBUG && console.log('built-in support sendAsBinary');
     } else {
-      console.log('define sendAsBinary');
+      DEBUG && console.log('define sendAsBinary');
       XMLHttpRequest.prototype.sendAsBinary = function (datastr) {
         function byteValue(x) {
           return x.charCodeAt(0) & 0xff;
@@ -102,7 +110,7 @@ function saveOAuthStatusToLocal(content, service) {
   }
 }
 
-function get_thepaperlink_json(url) {
+function get_thepaperlink_json(relative_url) {
   var apikey = localStorage.getItem('thepaperlink_apikey'),
     pubmeder_apikey = localStorage.getItem('pubmeder_apikey'),
     pubmeder_email = localStorage.getItem('pubmeder_email'),
@@ -110,7 +118,7 @@ function get_thepaperlink_json(url) {
     p = safari.extension.settings.ezproxy_prefix || '',
     oauth_status = safari.extension.settings.oauth_status || '',
     cloud_op = '',
-    base_uri = 'https://pubget-hrd.appspot.com';
+    base = 'https://pubget-hrd.appspot.com';
   if (pubmeder_apikey && pubmeder_email) {
     pubmeder_ok = true;
   }
@@ -134,13 +142,13 @@ function get_thepaperlink_json(url) {
     req_key = 'G0oasfw0382Wd3oQ0l1LiWzE'; // temp apikey, may disabled in the future
   }
   if (safari.extension.settings.rev_proxy) {
-    base_uri = 'http://0.pl4.me';
+    base = 'http://0.pl4.me';
   }
-  if (url) {
-    $.getJSON(base_uri + url + req_key, function (d) {
+  if (relative_url) {
+    $.getJSON(base + relative_url + req_key, function (d) {
       if (d && (d.count || d.error)) { // good or bad, both got json return
         safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('tj', [
-          d, apikey, pubmeder_ok, pubmeder_apikey, pubmeder_email, cloud_op, base_uri, p ]);
+          d, apikey, pubmeder_ok, pubmeder_apikey, pubmeder_email, cloud_op, p ]);
       } else {
         safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('except', apikey);
       }
@@ -151,16 +159,15 @@ function get_thepaperlink_json(url) {
 }
 
 function upload_pdf_as_binary(upload_url, pdf, pmid, apikey, no_email) {
-  var pdf_data = getBinary(pdf), msg, base_uri;
+  var pdf_data = getBinary(pdf), msg,
+    base = 'https://pubget-hrd.appspot.com';
   msg = sendBinary(upload_url, pdf_data, pmid);
   if (msg === null) {
     if (!no_email) {
       if (safari.extension.settings.rev_proxy) {
-        base_uri = 'http://0.pl4.me';
-      } else {
-        base_uri = 'https://pubget-hrd.appspot.com';
+        base = 'http://0.pl4.me';
       }
-      $.post(base_uri + '/',
+      $.post(base + '/',
         {'pmid': pmid, 'apikey': apikey, 'action': 'email'},
         function (d) {
           $('#thepaperlink_A' + pmid).fadeOut('fast'); // shouldn't work
@@ -187,7 +194,7 @@ function saveIt_pubmeder(pmid) {
               'pmid' : pmid},
     url = 'https://pubmeder-hrd.appspot.com/input?callback=?';
   if (args.apikey === null || args.email === null) {
-    console.log('no valid pubmeder credit, open related URL');
+    DEBUG && console.log('no valid pubmeder credit, open related URL');
     if (safari.extension.settings.tab_open_if_no_apikey) {
       var tab = safari.application.activeBrowserWindow.openTab();
       tab.url = 'http://www.pubmeder.com/registration';
@@ -204,65 +211,317 @@ function saveIt_pubmeder(pmid) {
       } else {
         var pre_history = localStorage.getItem('id_history');
         localStorage.setItem('id_history', pre_history + ',' + pmid);
-        console.log(pre_history + ',' + pmid);
+        DEBUG && console.log(pre_history + ',' + pmid);
       }
       localStorage.setItem('id_found', '');
     }
   });
 }
 
-// -- Liang Cai, 2012 -- //
-
-if (safari.extension.settings.tab_open_if_no_apikey && (
-  localStorage.getItem('pubmeder_apikey') === null || localStorage.getItem('pubmeder_email') === null)) {
-  alert('to bookmark references into your personal account,\nplease generate the apikey at www.pubmeder.com');
-  var tab = safari.application.activeBrowserWindow.openTab();
-  tab.url = 'http://www.pubmeder.com/registration';
+function queue_scholar_title() {
+  setTimeout(do_scholar_title, 1250*scholar_run + 1);
 }
 
-if (safari.extension.settings.tab_open_if_no_apikey && localStorage.getItem('thepaperlink_apikey') === null) {
-  alert('to accelerate your access speed to "the Paper Link",\nplease obtain your own apikey at www.thepaperlink.com');
-  var tab = safari.application.activeBrowserWindow.openTab();
-  tab.url = 'http://www.thepaperlink.com/reg';
+function do_scholar_title() {
+  scholar_title(
+    scholar_queue[2*scholar_run], scholar_queue[2*scholar_run + 1]
+  );
+  scholar_run += 1;
+  if (scholar_run === scholar_count) {
+    scholar_count = 0;
+    scholar_run = 0;
+    scholar_queue = [],
+    DEBUG && console.log('>> self-reset scholar_count _run _queue');
+  }
 }
+
+function parse_url(pmid, url) {
+  DEBUG && console.log('pmid', pmid);
+  DEBUG && console.log('url', url);
+  var in_mem = localStorage.getItem('url_' + pmid);
+  if (in_mem) {
+    in_mem = in_mem.split(',', 2);
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+      'el_link', ['_pdf' + pmid, in_mem[1]] );
+    return;
+  }
+  safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+    'el_link', ['_pdf' + pmid, 1] );
+  $.get(url,
+    function (r) {
+      var reg = /href="([^"]+)" target="newPdfWin"/,
+        h = reg.exec(r);
+      if (h && h.length) {
+        DEBUG && console.log(h);
+        localStorage.setItem('url_' + pmid, pmid + ',' + h[1]);
+        safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+          'el_link', ['_pdf' + pmid, h[1]] );
+        var base = 'https://pubget-hrd.appspot.com';
+        if (safari.extension.settings.rev_proxy) {
+          base = 'http://0.pl4.me';
+        }
+        $.post(base + '/',
+          {'apikey': req_key, 'pmid': pmid, 'pii_link': h[1]},
+          function (d) {
+            DEBUG && console.log('post pii_link (empty is a success): ' + d);
+          }
+        );
+        return;
+      }
+    },
+    'html'
+  );
+}
+
+function scholar_title(pmid, t) {
+  DEBUG && console.log('pmid', pmid);
+  DEBUG && console.log('title', t);
+  var in_mem = localStorage.getItem('scholar_' + pmid);
+  if (in_mem) {
+    in_mem = in_mem.split(',', 3);
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+      'g_scholar', in_mem );
+    return;
+  }
+  var url = 'http://scholar.google.com/scholar?as_q=&as_occt=title&as_sdt=1.&as_epq='
+    + encodeURIComponent('"' + t + '"');
+  safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+    'g_scholar', [pmid, 1, 1] );
+  $.get(url,
+    function (r) {
+      var reg = /<a[^<]+>Cited by \d+<\/a>/,
+        h = reg.exec(r),
+        g_num = [], g_link = [];
+      if (h && h.length) {
+        DEBUG && console.log(h);
+        g_num = />Cited by (\d+)</.exec(h[0]);
+        g_link = /href="([^"]+)"/.exec(h[0]);
+        if (g_num.length === 2 && g_link.length === 2) {
+          localStorage.setItem('scholar_' + pmid, pmid + ',' + g_num[1] + ',' + g_link[1]);
+          safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+            'g_scholar', [pmid, g_num[1], g_link[1]] );
+          var base = 'https://pubget-hrd.appspot.com';
+          if (safari.extension.settings.rev_proxy) {
+            base = 'http://0.pl4.me';
+          }
+          $.post(base + '/',
+            {'apikey': req_key, 'pmid': pmid, 'g_num': g_num[1], 'g_link': g_link[1]},
+            function (d) {
+              DEBUG && console.log('post g_num and g_link (empty is a success): ' + d);
+            }
+          );
+          return;
+        }
+      }
+      safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+        'g_scholar', [pmid, 0, 0] );
+    },
+    'html'
+  );
+}
+
+function load_goog_channel() {
+  if (typeof goog === 'undefined' && load_try > 0) {
+    load_try -= 1;
+    setTimeout(load_goog_channel, 1000);
+    return;
+  }
+  var channel = new goog.appengine.Channel(channel_token),
+    socket = channel.open();
+  //socket.onopen = onOpened;
+  socket.onmessage = function (m) {
+    var d = JSON.parse(m.data);
+    DEBUG && console.log(d);
+    if (d.action === 'title') {
+      scholar_title( d.pmid, d.title );
+    } else if (d.action === 'url') {
+      parse_url( d.pmid, d.url );
+    } else if (d.action === 'pdfLink_quick') {
+      safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+        'el_link', ['pdfLink_quick', d.pdfLink_quick] );
+    }
+  };
+  //socket.onerror = onError;
+  //socket.onclose = onClose;
+}
+
+function load_pusher() {
+  if (typeof Pusher === 'undefined' && load_try > 0) {
+    load_try -= 1;
+    setTimeout(load_pusher, 1000);
+    return;
+  }
+  var pusher = new Pusher('0ba83dd56d3312cc67c7'),
+    myChannel = pusher.subscribe('server');
+  myChannel.bind('broadcast', function (m) {
+    var d = JSON.parse(m.msg);
+    DEBUG && console.log(d);
+    if (d.action === 'title') {
+      scholar_title( d.pmid, d.title );
+    } else if (d.action === 'url') {
+      parse_url( d.pmid, d.url );
+    }
+  });
+}
+
+function load_broadcast() {
+ if (localStorage.getItem('thepaperlink_apikey')) {
+    var base = 'https://pubget-hrd.appspot.com';
+    if (safari.extension.settings.rev_proxy) {
+      base = 'http://0.pl4.me';
+    }
+    $.post(base + '/mesh/create',
+      {'apikey': localStorage.getItem('thepaperlink_apikey')},
+      function (d) {
+        DEBUG && console.log('post /mesh/create: ' + d);
+        channel_token = d;
+        try {
+          var ah = dd.createElement('script');
+          ah.setAttribute('type', 'text/javascript');
+          ah.setAttribute('src', base + '/_ah/channel/jsapi');
+          dd.body.appendChild(ah);
+          load_goog_channel();
+          broadcast_loaded = 1;
+        } catch (err) {
+          DEBUG && console.log('goog_channel is bleeding: ' + err);
+        }
+      }
+    );
+  } else {
+    try {
+      var p = dd.createElement('script');
+      p.setAttribute('type', 'text/javascript');
+      p.setAttribute('src', 'https://d3dy5gmtp8yhk7.cloudfront.net/1.11/pusher.min.js');
+      dd.body.appendChild(p);
+      load_pusher();
+      broadcast_loaded = 1;
+    } catch (err) {
+      DEBUG && console.log('pusher is bleeding: ' + err);
+    }
+  }
+}
+
+// -- Liang Cai -- //
 
 $.ajax({
   url: 'https://pubget-hrd.appspot.com/static/humans.txt',
   dataType: 'text',
   timeout: 4000,
-  success: function() { console.log('Hi, you can access our secured server directly.'); },
+  success: function() {
+    DEBUG && console.log('Hi, you can access our secured server directly.'); },
   error: function() {
-    console.log('error? force rev_proxy');
+    DEBUG && console.log('error? force rev_proxy');
     safari.extension.settings.rev_proxy = true; }
+});
+
+$(document).ready(function () {
+  if (!broadcast_loaded) {
+    load_broadcast();
+  }
+  // alerting pages
+  var currentTime = new Date(),
+    year = currentTime.getFullYear(),
+    month = currentTime.getMonth() + 1,
+    day = currentTime.getDate(),
+    date_str = 'day_' + year + '_' + month + '_' + day,
+    last_date = localStorage.getItem('last_date_str') || null;
+  if (last_date !== date_str) {
+    localStorage.setItem('last_date_str', date_str);
+    if ( safari.extension.settings.tab_open_if_no_apikey ) {
+      if (!localStorage.getItem('pubmeder_apikey')) {
+        var tab = safari.application.activeBrowserWindow.openTab();
+        tab.url = 'http://www.pubmeder.com/registration';
+      }
+      if (!localStorage.getItem('thepaperlink_apikey')) {
+        var tab = safari.application.activeBrowserWindow.openTab();
+        tab.url = 'http://www.thepaperlink.com/reg';
+      }
+    } else {
+      if (!localStorage.getItem('pubmeder_apikey')
+        || !localStorage.getItem('thepaperlink_apikey')) {
+        var tab = safari.application.activeBrowserWindow.openTab();
+        tab.url = 'http://www.thepaperlink.com/static/about_us.html';
+      }
+    }
+  }
 });
 
 
 function handleMessage(msg) {
   switch (msg.name) {
+
+  case 'loadExtraJs':
+    var jss_url = 'https://pubget-hrd.appspot.com/jss';
+    if (safari.extension.settings.rev_proxy) {
+      jss_url = 'http://0.pl4.me/jss';
+    }
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+      'paperlink2', jss_url );
+    break;
+
   case 'url':
     get_thepaperlink_json(msg.message);
     break;
+
   case 'saveAPI':
     saveApikeyToLocal(msg.message[0], msg.message[1]);
     break;
+
   case 'saveOAuthStatus':
     saveOAuthStatusToLocal(msg.message[0], msg.message[1]);
     break;
-  case 'foundID':
-    var dotCheck = /\./,
-      pmcCheck = /PMC/;
-    if (dotCheck.test(msg.message) || pmcCheck.test(msg.message)) {
-      eSearch(msg.message);
-    } else {
+
+  case 'sendID':
+    if ( alldigi.test(msg.message) ) {
       save_visited_ID(msg.message);
+    } else {
+      eSearch(msg.message);
     }
     break;
+
   case 'upload_pdf':
     upload_pdf_as_binary(
       msg.message[0], msg.message[1], msg.message[2], msg.message[3], msg.message[4]);
     break;
-  }
-}
+
+  case 'pmid_title':
+    scholar_queue[2*scholar_count] = msg.message[0];
+    scholar_queue[2*scholar_count + 1] = msg.message[1];
+    scholar_count += 1;
+    queue_scholar_title();
+    break;
+
+  case 'reset_scholar_count':
+    scholar_count = 0;
+    scholar_run = 0;
+    scholar_queue = [],
+    DEBUG && console.log('on-request reset scholar_count _run _queue');
+    break;
+
+  case 'pmid_title':
+  //} else if (request.load_broadcast && !broadcast_loaded) {
+    load_broadcast();
+    break;
+
+  case 'pii_link':
+    parse_url(msg.message[0], 'http://linkinghub.elsevier.com/retrieve/pii/' + msg.message[1]);
+    break;
+
+  case 'fill_about_us_page':
+    safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('about_us_page', [
+      localStorage.getItem('thepaperlink_apikey'),
+      localStorage.getItem('pubmeder_apikey'),
+      safari.extension.settings.oauth_status,
+      safari.extension.settings.tab_open_if_no_apikey,
+      safari.extension.settings.rev_proxy,
+      safari.extension.settings.ezproxy_prefix,
+    ]);
+    break;
+
+  case 'check_apikey':
+    safari.extension.settings.tab_open_if_no_apikey = true;
+    break;
+} }
 safari.application.addEventListener('message', handleMessage, false);
 
 function performCommand(event) {
@@ -274,18 +533,16 @@ function performCommand(event) {
       tab.url = 'http://www.thepaperlink.com/';
     }
   } else if (event.command === 'find-id-on-the-page') {
-    var base,
+    var base = 'https://pubget-hrd.appspot.com',
       apikey = localStorage.getItem('thepaperlink_apikey');
     if (apikey === null) {
       apikey = 'G0oasfw0382Wd3oQ0l1LiWzE'; // temp apikey, may disabled in the future
     }
     if (safari.extension.settings.rev_proxy) {
-      base = 'http://0.pl4.me/';
-    } else {
-      base = 'https://pubget-hrd.appspot.com/';
+      base = 'http://0.pl4.me';
     }
     safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('js', [
-      apikey, base ]);
+      apikey, base + '/' ]);
   }
 }
 safari.application.addEventListener('command', performCommand, false);

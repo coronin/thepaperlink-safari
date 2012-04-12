@@ -20,6 +20,9 @@
   border-radius: 4px !important;
   display: inline-block !important;
 }
+.thepaperlink_Off {
+  display: none !important;
+}
 .thepaperlink > a, .thepaperlink > span {
   margin: 0 6px !important;
 }
