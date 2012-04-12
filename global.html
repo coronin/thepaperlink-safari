@@ -10,6 +10,7 @@ var DEBUG = false,
   scholar_count = 0;
   scholar_run = 0;
   scholar_queue = [],
+  load_try = 10,
   channel_token = '',
   broadcast_loaded = 0;
 
@@ -231,7 +232,7 @@ function do_scholar_title() {
     scholar_count = 0;
     scholar_run = 0;
     scholar_queue = [],
-    DEBUG && console.log('>> self-reset scholar_count _run _queue');
+    DEBUG && console.log('self-reset scholar_count _run _queue');
   }
 }
 
@@ -424,11 +425,12 @@ $(document).ready(function () {
     month = currentTime.getMonth() + 1,
     day = currentTime.getDate(),
     date_str = 'day_' + year + '_' + month + '_' + day,
-    last_date = localStorage.getItem('last_date_str') || null;
+    last_date = localStorage.getItem('last_date_str');
   if (last_date !== date_str) {
     localStorage.setItem('last_date_str', date_str);
     if ( safari.extension.settings.tab_open_if_no_apikey ) {
-      if (!localStorage.getItem('pubmeder_apikey')) {
+      if (!localStorage.getItem('pubmeder_apikey')
+        || !localStorage.getItem('pubmeder_email')) {
         var tab = safari.application.activeBrowserWindow.openTab();
         tab.url = 'http://www.pubmeder.com/registration';
       }
@@ -438,6 +440,7 @@ $(document).ready(function () {
       }
     } else {
       if (!localStorage.getItem('pubmeder_apikey')
+        || !localStorage.getItem('pubmeder_email')
         || !localStorage.getItem('thepaperlink_apikey')) {
         var tab = safari.application.activeBrowserWindow.openTab();
         tab.url = 'http://www.thepaperlink.com/static/about_us.html';
@@ -498,13 +501,18 @@ function handleMessage(msg) {
     DEBUG && console.log('on-request reset scholar_count _run _queue');
     break;
 
-  case 'pmid_title':
-  //} else if (request.load_broadcast && !broadcast_loaded) {
-    load_broadcast();
+  case 'load_broadcast':
+    if (!broadcast_loaded) {
+      load_broadcast();
+    }
     break;
 
   case 'pii_link':
     parse_url(msg.message[0], 'http://linkinghub.elsevier.com/retrieve/pii/' + msg.message[1]);
+    break;
+
+  case 'save_cloud_op':
+    safari.extension.settings.oauth_status = msg.message;
     break;
 
   case 'fill_about_us_page':

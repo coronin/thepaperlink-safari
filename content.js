@@ -6,7 +6,7 @@
  * http://cail.cn
  */
 
-var DEBUG = false;
+var DEBUG = false,
   noRun = 0,
   page_d = document,
   page_url = page_d.URL,
@@ -55,7 +55,7 @@ function $(d) { return page_d.getElementById(d); }
 function trim(s) { return ( s || '' ).replace( /^\s+|\s+$/g, '' ); }
 
 function a_proxy(name, data) {
-  DEBUG && console.log('sendRequest to background.html');
+  DEBUG && console.log(name + ': sendRequest to global.html');
   safari.self.tab.dispatchMessage(name, data);
 }
 
@@ -519,7 +519,7 @@ function gotMessage(msg) {
         ezproxy_prefix + '</li>';
     }
     $('firefox_note').innerHTML = '';
-    $('client_title').innerHTML = 'Instruction for Firefox Add-on';
+    $('client_title').innerHTML = 'Instruction for Safari Extension';
     $('client_content').innerHTML = div_html +
       '<li>More at Safari Preferences <i>(command + ,)</i> Extensions section</li></ul>';
 
