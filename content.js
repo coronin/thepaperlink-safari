@@ -518,6 +518,7 @@ function gotMessage(msg) {
       div_html += '<li>your library supports ezproxy? your setting is to use ' +
         ezproxy_prefix + '</li>';
     }
+    $('firefox_note').innerHTML = '';
     $('client_title').innerHTML = 'Instruction for Firefox Add-on';
     $('client_content').innerHTML = div_html +
       '<li>More at Safari Preferences <i>(command + ,)</i> Extensions section</li></ul>';
