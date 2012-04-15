@@ -12,9 +12,9 @@
        <key>CFBundleVersion</key>
        <string>1</string>
        <key>CFBundleShortVersionString</key>
-       <string>1.2.2.1</string>
+       <string>1.2.2.2</string>
        <key>URL</key>
-       <string>https://github.com/coronin/thepaperlink-safari/raw/master/thepaperlink-v122.safariextz</string>
+       <string>https://github.com/coronin/thepaperlink-safari/blob/master/thepaperlink.safariextz?raw=true</string>
      </dict>
    </array>
 </dict>
