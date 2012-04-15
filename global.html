@@ -11,7 +11,6 @@ var DEBUG = false,
   scholar_run = 0;
   scholar_queue = [],
   load_try = 10,
-  channel_token = '',
   broadcast_loaded = 0;
 
 function saveApikeyToLocal(email, apikey) {
@@ -329,31 +328,6 @@ function scholar_title(pmid, t) {
   });
 }
 
-function load_goog_channel() {
-  if (typeof goog === 'undefined' && load_try > 0) {
-    load_try -= 1;
-    setTimeout(load_goog_channel, 1000);
-    return;
-  }
-  var channel = new goog.appengine.Channel(channel_token),
-    socket = channel.open();
-  //socket.onopen = onOpened;
-  socket.onmessage = function (m) {
-    var d = JSON.parse(m.data);
-    DEBUG && console.log(d);
-    if (d.action === 'title') {
-      scholar_title( d.pmid, d.title );
-    } else if (d.action === 'url') {
-      parse_url( d.pmid, d.url );
-    } else if (d.action === 'pdfLink_quick') {
-      safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
-        'el_link', ['pdfLink_quick', d.pdfLink_quick] );
-    }
-  };
-  //socket.onerror = onError;
-  //socket.onclose = onClose;
-}
-
 function load_pusher() {
   if (typeof Pusher === 'undefined' && load_try > 0) {
     load_try -= 1;
@@ -374,39 +348,15 @@ function load_pusher() {
 }
 
 function load_broadcast() {
- if (localStorage.getItem('thepaperlink_apikey')) {
-    var base = 'https://pubget-hrd.appspot.com';
-    if (safari.extension.settings.rev_proxy) {
-      base = 'http://0.pl4.me';
-    }
-    $.post(base + '/mesh/create',
-      {'apikey': localStorage.getItem('thepaperlink_apikey')},
-      function (d) {
-        DEBUG && console.log('post /mesh/create: ' + d);
-        channel_token = d;
-        try {
-          var ah = dd.createElement('script');
-          ah.setAttribute('type', 'text/javascript');
-          ah.setAttribute('src', base + '/_ah/channel/jsapi');
-          dd.body.appendChild(ah);
-          load_goog_channel();
-          broadcast_loaded = 1;
-        } catch (err) {
-          DEBUG && console.log('goog_channel is bleeding: ' + err);
-        }
-      }
-    );
-  } else {
-    try {
-      var p = dd.createElement('script');
-      p.setAttribute('type', 'text/javascript');
-      p.setAttribute('src', 'https://d3dy5gmtp8yhk7.cloudfront.net/1.11/pusher.min.js');
-      dd.body.appendChild(p);
-      load_pusher();
-      broadcast_loaded = 1;
-    } catch (err) {
-      DEBUG && console.log('pusher is bleeding: ' + err);
-    }
+  try {
+    var p = dd.createElement('script');
+    p.setAttribute('type', 'text/javascript');
+    p.setAttribute('src', 'https://d3dy5gmtp8yhk7.cloudfront.net/1.11/pusher.min.js');
+    dd.body.appendChild(p);
+    load_pusher();
+    broadcast_loaded = 1;
+  } catch (err) {
+    DEBUG && console.log('pusher is bleeding: ' + err);
   }
 }
 
