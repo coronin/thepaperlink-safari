@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.2</string>
+	<string>1.2.2.1</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>Chrome</key>
@@ -76,7 +76,7 @@
 		</dict>
 	</dict>
 	<key>Update Manifest URL</key>
-	<string>https://pubget-hrd.appspot.com/static/thepaperlink-safari.plist</string>
+	<string>https://github.com/coronin/thepaperlink-safari/raw/master/thepaperlink-safari.plist</string>
 	<key>Website</key>
 	<string>http://www.thepaperlink.com</string>
 </dict>
