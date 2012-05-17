@@ -14,7 +14,6 @@ var DEBUG = false,
   pmids = '',
   pmidArray = [],
   old_title = '',
-  title_pos = 0,
   search_term = '',
   onePage_calls = 0,
   alert_js = 'function alert_dev(apikey) {' +
@@ -97,7 +96,7 @@ function getPmid(zone, num) {
           '.\r\n' + trim( t_strings[1] ) +
           '.\r\n' + trim( t_strings[2] ) +
           '. ' + trim( t_strings[3] ) +
-          '. [' + ID[1] + ']\r\n';
+          '. [PMID:' + ID[1] + ']\r\n';
       } else{
         t_strings = a.split('.');
         t_title = trim( t_strings[2] );
@@ -105,34 +104,42 @@ function getPmid(zone, num) {
           '.\r\n' + trim( t_strings[3] ) +
           '.\r\n' + trim( t_strings[0] ) +
           '. ' + trim( t_strings[1] ) +
-          '. [' + ID[1] + ']\r\n';
+          '. [PMID:' + ID[1] + ']\r\n';
       }
       DEBUG && console.log(t_cont);
       b = page_d.createElement('div');
       b.innerHTML = '<div style="float:right;z-index:1"><embed src="'
         + swf_file + '" wmode="transparent" width="110" height="14" quality="high" allowScriptAccess="always" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" FlashVars="text='
         + t_cont + '" /></div>';
+      //b.innerHTML = '<div style="float:right;z-index:1;cursor:pointer">'
+      //  + '<img class="pl4_clippy" title="copy to clipboard" src="' + clippy_file
+      //  + '" alt="copy" width="14" height="14" />&nbsp;&nbsp;</div>';
       //b.onclick = function () {
       //  chrome.extension.sendRequest({t_cont: t_cont});
       //};
-      c = page_d.createElement('span');
-      c.style.cssText = 'border-left:4px #fccccc solid;padding-left:4px;padding-right:4px;font-size:11px;';
-      c.innerHTML = 'Cited by: <span id="citedBy' + ID[1] + '"></span>';
       if (t(zone)[num].className === 'rprt') {
         t(zone)[num + 3].appendChild(b);
-        t(zone)[num + 4].appendChild(c);
       } else { // display with abstract
         t(zone)[num + 1].appendChild(b);
-        t(zone)[num + 5].appendChild(c);
       }
       pmids += ',' + ID[1];
-      a_proxy('pmid_title', [ID[1], t_title]);
+      if (a.indexOf('- in process') < 0) {
+        c = page_d.createElement('span');
+        c.style.cssText = 'border-left:6px #fccccc solid;padding-left:6px;font-size:11px;';
+        c.innerHTML = 'Cited by: <span id="citedBy' + ID[1] + '">waiting</span>';
+        if (t(zone)[num].className === 'rprt') {
+          t(zone)[num + 4].appendChild(c);
+        } else { // display with abstract
+          t(zone)[num + 5].appendChild(c);
+        }
+        a_proxy('pmid_title', [ID[1], t_title]);
+      }
     }
   }
 }
 
 function get_Json(pmids) {
-  var i, div,
+  var i, ele,
     need_insert = 1,
     url = '/api?flash=yes&a=safari1&pmid=' + pmids,
     loading_span = '<span style="font-weight:normal;font-style:italic"> fetching data from "the Paper Link"</span>&nbsp;&nbsp;<img src="' + loading_gif + '" width="16" height="11" alt="loading" />';
@@ -142,17 +149,19 @@ function get_Json(pmids) {
     url += '&apikey=';
   }
   for (i = 0; i < t('h2').length; i += 1) {
-    if (t('h2')[i].className === 'result_count') {
-      old_title = t('h2')[i].innerHTML;
-      title_pos = i;
+    ele = t('h2')[i];
+    if (ele.className === 'result_count') {
       need_insert = 0;
-      t('h2')[i].innerHTML = old_title + loading_span;
+      ele.setAttribute('id', 'pl4_title');
+      old_title = ele.innerHTML;
+      ele.innerHTML = old_title + loading_span;
     }
   }
   if (need_insert) {
-    div = page_d.createElement('h2');
-    div.innerHTML = loading_span;
-    $('messagearea').appendChild(div);
+    ele = page_d.createElement('h2');
+    ele.innerHTML = loading_span;
+    ele.setAttribute('id', 'pl4_title');
+    $('messagearea').appendChild(ele);
   }
   onePage_calls += 1;
   a_proxy('url', url);
@@ -273,7 +282,7 @@ function gotMessage(msg) {
     alert_script.type = 'text/javascript';
     alert_script.text = alert_js;
     page_d.body.appendChild(alert_script);
-    t('h2')[title_pos].innerHTML = old_title +
+    $('pl4_title').innerHTML = old_title +
       ' <span style="font-size:14px;font-weight:normal;color:red">Error! Try ' +
       '<button onclick="window.location.reload()">reload</button> or ' +
       '<b>Search</b> <a href="http://www.thepaperlink.com/?q=' + search_term +
@@ -325,18 +334,25 @@ function gotMessage(msg) {
     }
     break;
 
-  case 'el_link':
+  case 'el_data':
     try {
-      if (msg.message[1] === 1 && page_url.indexOf('://www.ncbi.nlm.nih.gov/') === -1) {
-        $(msg.message[0]).innerText = 'trying';
-      } else {
+      if (msg.message[1] && msg.message[1].indexOf('://') > -1) {
         if (page_url.indexOf('://www.ncbi.nlm.nih.gov/') > 0) {
-          $('thepaperlink' + msg.message[0]).innerText = 'pdf file';
-          $('thepaperlink' + msg.message[0]).href = uneval_trim(msg.message[1]);
+          var e = $('thepaperlink' + msg.message[0]);
+          if (msg.message[1] === '://') {
+            e.parentNode.removeChild(e);
+          } else {
+            e.innerText = 'pdf file';
+            e.href = uneval_trim(msg.message[1]);
+          }
         } else {
           $(msg.message[0]).innerHTML = '&raquo; <a target="_blank" href="'
             + uneval_trim(msg.message[1]) +'">the file link</a>';
         }
+      } else if (msg.message[1] === 1 && page_url.indexOf('://www.ncbi.nlm.nih.gov/') === -1) {
+        $(msg.message[0]).innerText = 'trying';
+      } else {
+        $(msg.message[0]).innerText = msg.message[1];
       }
     } catch (err) {
       DEBUG && console.log(err);
@@ -344,7 +360,7 @@ function gotMessage(msg) {
     break;
 
   case 'tj':
-    var div, div_html, i, j, k, pmid,
+    var div, div_html, i, j, k, pmid, s2,
       r = msg.message[0],
       tpl = msg.message[1],
       pubmeder = msg.message[2],
@@ -355,12 +371,13 @@ function gotMessage(msg) {
       bookmark_div = '<div id="css_loaded" class="thepaperlink" style="margin-left:10px;font-size:80%;font-weight:normal;cursor:pointer"> ';
 
     if (r && r.error) {
-      t('h2')[title_pos].innerHTML = old_title +
+      $('pl4_title').innerHTML = old_title +
         ' <span style="font-size:14px;font-weight:normal;color:red">"the Paper Link" error ' +
         uneval(r.error) + '</span>';
       break;
     }
     if (!r || !r.count) {
+      DEBUG && console.log('tj with nothing, oops - should never happen');
       break;
     }
     if (pubmeder) {
@@ -371,15 +388,24 @@ function gotMessage(msg) {
       bookmark_div += 'Wanna save what you are reading? Login<a href="http://www.pubmeder.com/registration" target="_blank">PubMed-er</a></div>';
     }
     if (old_title) {
-      t('h2')[title_pos].innerHTML = old_title + bookmark_div;
+      $('pl4_title').innerHTML = old_title + bookmark_div;
     } else {
-      t('h2')[title_pos].innerHTML = '';
+      $('pl4_title').innerHTML = '';
     }
     for (i = 0; i < r.count; i += 1) {
       pmid = uneval_trim(r.item[i].pmid);
+      k = pmidArray.length;
+      for (j = 0; j < k; j += 1) {
+        if (pmid === pmidArray[j]) {
+          pmidArray = pmidArray.slice(0, j).concat(pmidArray.slice(j + 1, k));
+      } }
+      if ( $('pl4me_' + pmid) ) {
+        continue;
+      }
       div = page_d.createElement('div');
       div.className = 'thepaperlink';
-      div_html = '<a class="thepaperlink-home" href="http://www.thepaperlink.com/?q=pmid:' +
+      div_html = '<a class="thepaperlink-home" id="pl4me_' + pmid +
+        '" href="http://www.thepaperlink.com/?q=pmid:' +
         pmid + '" target="_blank">the Paper Link</a>: ';
       if (r.item[i].slfo && r.item[i].slfo !== '~' && parseFloat(r.item[i].slfo) > 0) {
         div_html += '<span>impact&nbsp;' + uneval_trim(r.item[i].slfo) + '</span>';
@@ -405,6 +431,13 @@ function gotMessage(msg) {
         div_html += '<a id="thepaperlink_doi' + pmid +
           '" href="' + p + 'http://linkinghub.elsevier.com/retrieve/pii/' +
           uneval_trim(r.item[i].pii) + '" target="_blank">publisher</a>';
+      }
+      if (r.item[i].pii && $('citedBy' + pmid)) {
+        s2 = page_d.createElement('span');
+        s2.innerHTML = '; <span id="pl4_scopus' + pmid + '"></span> <a href="' +
+          p + 'http://linkinghub.elsevier.com/retrieve/pii/' +
+          uneval_trim(r.item[i].pii) + '" target="_blank">(in Scopus)</a>';
+        $('citedBy' + pmid).parentNode.appendChild(s2);
       }
       if (r.item[i].f_v && r.item[i].fid) {
         div_html += '<a id="thepaperlink_f' + pmid +
@@ -447,19 +480,13 @@ function gotMessage(msg) {
           }
         });
       }
-
-      k = pmidArray.length;
-      for (j = 0; j < k; j += 1) {
-        if (pmid === pmidArray[j]) {
-          pmidArray = pmidArray.slice(0, j).concat(pmidArray.slice(j + 1, k));
-      } }
     }
     if (pmidArray.length > 0 && onePage_calls < 10) {
       if (pmidArray.length === k) {
         DEBUG && console.log('got nothing, stopped. ' + k);
       } else {
         DEBUG && console.log('call for ' + k + ', not get ' + pmidArray.length);
-        t('h2')[title_pos].innerHTML = old_title + bookmark_div + '&nbsp;&nbsp;<img src="' +
+        $('pl4_title').innerHTML = old_title + bookmark_div + '&nbsp;&nbsp;<img src="' +
           loading_gif + '" width="16" height="11" alt="loading" />';
         onePage_calls += 1;
         a_proxy('url', '/api?a=safari2&pmid=' + pmidArray.join(',') + '&apikey=');

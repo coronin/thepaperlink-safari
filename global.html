@@ -243,32 +243,51 @@ function parse_url(pmid, url) {
   if (in_mem) {
     in_mem = in_mem.split(',', 2);
     safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
-      'el_link', ['_pdf' + pmid, in_mem[1]] );
+      'el_data', ['_pdf' + pmid, in_mem[1]] );
+    in_mem = localStorage.getItem('scopus_' + pmid);
+    if (in_mem) {
+      in_mem = in_mem.split(',', 2);
+      safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+        'el_data', ['pl4_scopus' + pmid, in_mem[1]] );
+    }
     return;
   }
   safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
-    'el_link', ['_pdf' + pmid, 1] );
+    'el_data', ['_pdf' + pmid, 1] );
   $.get(url,
     function (r) {
       var reg = /href="([^"]+)" target="newPdfWin"/,
-        h = reg.exec(r);
+        reg2 = /Cited by in Scopus \((\d+)\)/i,
+        h = reg.exec(r),
+        h2 = reg2.exec(r),
+        args;
       if (h && h.length) {
         DEBUG && console.log(h);
+        args = {'apikey': localStorage.getItem('thepaperlink_apikey') || 'G0oasfw0382Wd3oQ0l1LiWzE',
+          'pmid': pmid, 'pii_link': h[1]};
+        if (h2 && h2.length) {
+          DEBUG && console.log(h2);
+          args.scopus_n = h2[1];
+          localStorage.setItem('scopus_' + pmid, pmid + ',' + h2[1]);
+          safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+            'el_data', ['pl4_scopus' + pmid, h2[1]] );
+        }
         localStorage.setItem('url_' + pmid, pmid + ',' + h[1]);
         safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
-          'el_link', ['_pdf' + pmid, h[1]] );
+          'el_data', ['_pdf' + pmid, h[1]] );
         var base = 'https://pubget-hrd.appspot.com';
         if (safari.extension.settings.rev_proxy) {
           base = 'http://0.pl4.me';
         }
-        $.post(base + '/',
-          {'apikey': localStorage.getItem('thepaperlink_apikey') || 'G0oasfw0382Wd3oQ0l1LiWzE',
-            'pmid': pmid, 'pii_link': h[1]},
+        $.post(base + '/', args,
           function (d) {
             DEBUG && console.log('post pii_link (empty is a success): ' + d);
           }
         );
+        return;
       }
+      safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
+        'el_data', ['_pdf' + pmid, '://'] );
     },
     'html'
   ).error(function () {
@@ -373,23 +392,11 @@ $.ajax({
     safari.extension.settings.rev_proxy = true; }
 });
 
-for (i = 0; i < localStorage.length; i += 1) {
-  aKey = localStorage.key(i);
-  if (aKey && aKey.substr(0,6) === 'email_') {
-    aVal = aKey.split('_');
-    email_abstract(aVal[1], aVal[2]);
-  } else if (aKey && aKey.substr(0,7) === 'pubmed_') {
-    aVal = aKey.split('_');
-    localStorage.removeItem(aKey);
-    saveIt_pubmeder(aVal[1]);
-  }
-}
-
 $(document).ready(function () {
   if (!broadcast_loaded) {
     load_broadcast();
   }
-  // alerting pages
+  // alerting pages && daily cleaning
   var currentTime = new Date(),
     year = currentTime.getFullYear(),
     month = currentTime.getMonth() + 1,
@@ -409,16 +416,27 @@ $(document).ready(function () {
         tab.url = 'http://www.thepaperlink.com/reg';
       }
     } else {
-      if (!localStorage.getItem('pubmeder_apikey')
-        || !localStorage.getItem('pubmeder_email')
-        || !localStorage.getItem('thepaperlink_apikey')) {
+      if (!localStorage.getItem('thepaperlink_apikey')) {
+      // !localStorage.getItem('pubmeder_apikey') || !localStorage.getItem('pubmeder_email')
         var tab = safari.application.activeBrowserWindow.openTab();
         tab.url = 'http://www.thepaperlink.com/static/about_us.html';
       }
     }
+    for (i = 0; i < localStorage.length; i += 1) {
+      aKey = localStorage.key(i);
+      if (aKey && aKey.substr(0,6) === 'email_') {
+        aVal = aKey.split('_');
+        email_abstract(aVal[1], aVal[2]);
+      } else if (aKey && aKey.substr(0,7) === 'pubmed_') {
+        aVal = aKey.split('_');
+        localStorage.removeItem(aKey);
+        saveIt_pubmeder(aVal[1]);
+      } else if (aKey && (aKey.substr(0,8) === 'scholar_' || aKey.substr(0,7) === 'scopus_')) {
+        localStorage.removeItem(aKey);
+      }
+    }
   }
 });
-
 
 function handleMessage(msg) {
   switch (msg.name) {
