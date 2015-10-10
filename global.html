@@ -1,14 +1,14 @@
 <!DOCTYPE HTML><html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src="jquery172min.js"></script>
+<script type="text/javascript" src="jquery-1.8.3.min.js"></script>
 <script type="text/javascript">
 
 var DEBUG = false,
   alldigi = /^\d+$/,
   dd = document,
-  scholar_count = 0;
-  scholar_run = 0;
+  scholar_count = 0,
+  scholar_run = 0,
   scholar_queue = [],
   load_try = 10,
   broadcast_loaded = 0;
@@ -64,7 +64,7 @@ function get_thepaperlink_json(relative_url) {
     req_key = 'G0oasfw0382Wd3oQ0l1LiWzE'; // temp apikey, may disabled in the future
   }
   if (safari.extension.settings.rev_proxy) {
-    base = 'http://0.pl4.me';
+    base = 'http://www.zhaowenxian.com';
   }
   if (relative_url) {
     $.getJSON(base + relative_url + req_key, function (d) {
@@ -96,7 +96,7 @@ function saveIt_pubmeder(pmid) {
     return;
   }
   if (safari.extension.settings.rev_proxy) {
-    url = 'http://1.pl4.me/input?callback=?';
+    url = 'http://1.zhaowenxian.com/input?callback=?';
   }
   $.getJSON(url, args, function (d) {
     if (d.respond > 1) {
@@ -231,7 +231,7 @@ function do_scholar_title() {
   if (scholar_run === scholar_count) {
     scholar_count = 0;
     scholar_run = 0;
-    scholar_queue = [],
+    scholar_queue = [];
     DEBUG && console.log('self-reset scholar_count _run _queue');
   }
 }
@@ -277,7 +277,7 @@ function parse_url(pmid, url) {
           'el_data', ['_pdf' + pmid, h[1]] );
         var base = 'https://pubget-hrd.appspot.com';
         if (safari.extension.settings.rev_proxy) {
-          base = 'http://0.pl4.me';
+          base = 'http://www.zhaowenxian.com';
         }
         $.post(base + '/', args,
           function (d) {
@@ -324,7 +324,7 @@ function scholar_title(pmid, t) {
             'g_scholar', [pmid, g_num[1], g_link[1]] );
           var base = 'https://pubget-hrd.appspot.com';
           if (safari.extension.settings.rev_proxy) {
-            base = 'http://0.pl4.me';
+            base = 'http://zhaowenxian.com';
           }
           $.post(base + '/',
             {'apikey': localStorage.getItem('thepaperlink_apikey') || 'G0oasfw0382Wd3oQ0l1LiWzE',
@@ -444,7 +444,7 @@ function handleMessage(msg) {
   case 'loadExtraJs':
     var jss_url = 'https://pubget-hrd.appspot.com/jss';
     if (safari.extension.settings.rev_proxy) {
-      jss_url = 'http://0.pl4.me/jss';
+      jss_url = 'http://www.zhaowenxian.com/jss';
     }
     safari.application.activeBrowserWindow.activeTab.page.dispatchMessage(
       'paperlink2', jss_url );
@@ -488,7 +488,7 @@ function handleMessage(msg) {
   case 'reset_scholar_count':
     scholar_count = 0;
     scholar_run = 0;
-    scholar_queue = [],
+    scholar_queue = [];
     DEBUG && console.log('on-request reset scholar_count _run _queue');
     break;
 
@@ -534,7 +534,7 @@ function performCommand(event) {
   } else if (event.command === 'find-id-on-the-page') {
     var base = 'https://pubget-hrd.appspot.com';
     if (safari.extension.settings.rev_proxy) {
-      base = 'http://0.pl4.me';
+      base = 'http://www.zhaowenxian.com';
     }
     safari.application.activeBrowserWindow.activeTab.page.dispatchMessage('js', [
       localStorage.getItem('thepaperlink_apikey') || 'G0oasfw0382Wd3oQ0l1LiWzE',

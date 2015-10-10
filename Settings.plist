@@ -4,7 +4,7 @@
 <array>
 	<dict>
 		<key>DefaultValue</key>
-		<false/>
+		<string>false</string>
 		<key>Key</key>
 		<string>tab_open_if_no_apikey</string>
 		<key>Title</key>
@@ -14,11 +14,11 @@
 	</dict>
 	<dict>
 		<key>DefaultValue</key>
-		<false/>
+		<string>false</string>
 		<key>Key</key>
 		<string>rev_proxy</string>
 		<key>Title</key>
-		<string>Use our reserse proxied server (improved accessibility)</string>
+		<string>Use our reserse proxied server, for users behind GFW</string>
 		<key>Type</key>
 		<string>CheckBox</string>
 	</dict>
@@ -45,6 +45,44 @@
 		<string>oauth_status</string>
 		<key>Title</key>
 		<string>Enabled external services</string>
+		<key>Type</key>
+		<string>TextField</string>
+	</dict>
+	<dict>
+		<key>Type</key>
+		<string>Separator</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<string>true</string>
+		<key>Key</key>
+		<string>ajax_pii_link</string>
+		<key>Title</key>
+		<string>Check to solve missing PDF links locally</string>
+		<key>Type</key>
+		<string>CheckBox</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<string>true</string>
+		<key>Key</key>
+		<string>scihub_link</string>
+		<key>Title</key>
+		<string>Check to insert sci-hub.org PDF links</string>
+		<key>Type</key>
+		<string>CheckBox</string>
+	</dict>
+	<dict>
+		<key>DefaultValue</key>
+		<string>3</string>
+		<key>Key</key>
+		<string>scihub_limits</string>
+		<key>MaximumValue</key>
+		<integer>7</integer>
+		<key>MinimumValue</key>
+		<integer>1</integer>
+		<key>Title</key>
+		<string>Per page, insert with a max of</string>
 		<key>Type</key>
 		<string>TextField</string>
 	</dict>

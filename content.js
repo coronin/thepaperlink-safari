@@ -10,17 +10,19 @@ var DEBUG = false,
   noRun = 0,
   page_d = document,
   page_url = page_d.URL,
-  loading_gif = 'http://www.thepaperlink.com/static/loadingLine.gif',
+  loading_gif = 'http://www.zhaowenxian.com/static/loadingLine.gif',
+  doipattern = /(\d{2}\.\d{4}\/[a-zA-Z0-9\.\/\)\(-]+\w)\s*\W?/,
   pmids = '',
   pmidArray = [],
   old_title = '',
   search_term = '',
+  search_result_count = '',
   onePage_calls = 0,
   alert_js = 'function alert_dev(apikey) {' +
-'  if (apikey && apikey !== "G0oasfw0382Wd3oQ0l1LiWzE") {' +
+'  if (apikey && apikey !== "' + GUEST_APIKEY + '") {' +
 '   var oXHR = new XMLHttpRequest();' +
-'   oXHR.open("POST", "http://0.pl4.me/?action=alert_dev&pmid=1&apikey=" + apikey, true);' +
-'   oXHR.onreadystatechange = function (oEvent) {' +
+'   oXHR.open("POST", "http://www.zhaowenxian.com/?action=alert_dev&pmid=1&apikey=" + apikey, true);' +
+'   oXHR.onreadystatechange = function () {' +
 '     if (oXHR.readyState === 4) {' +
 '       if (oXHR.status === 200) {' +
 '         console.log(oXHR.responseText);' +
@@ -220,7 +222,7 @@ function bigBoss() {
     || page_url === 'https://pubget-hrd.appspot.com/reg'
     || page_url === 'http://www.thepaperlink.com/reg'
     || page_url === 'http://www.thepaperlink.net/reg'
-    || page_url === 'http://0.pl4.me/reg') {
+    || page_url === 'http://www.zhaowenxian.com/reg') {
     load_thepaperlink_api(); // strange, just like DOMContentLoaded is not working
     return;
   } else if (page_url === 'http://pubmeder.appspot.com/registration'
@@ -228,7 +230,7 @@ function bigBoss() {
     || page_url === 'http://pubmeder-hrd.appspot.com/registration'
     || page_url === 'https://pubmeder-hrd.appspot.com/registration'
     || page_url === 'http://www.pubmeder.com/registration'
-    || page_url === 'http://1.pl4.me/registration') {
+    || page_url === 'http://1.zhaowenxian.com/registration') {
     var email = $('currentUser').innerHTML,
       apikey = $('apikey_pubmeder').innerHTML;
     a_proxy('saveAPI', [email, apikey]);
