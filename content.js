@@ -19,7 +19,7 @@ var DEBUG = false,
   search_result_count = '',
   onePage_calls = 0,
   alert_js = 'function alert_dev(apikey) {' +
-'  if (apikey && apikey !== "' + GUEST_APIKEY + '") {' +
+'  if (apikey && apikey !== "' + safari.extension.settings.GUEST_APIKEY + '") {' +
 '   var oXHR = new XMLHttpRequest();' +
 '   oXHR.open("POST", "http://www.zhaowenxian.com/?action=alert_dev&pmid=1&apikey=" + apikey, true);' +
 '   oXHR.onreadystatechange = function () {' +
@@ -30,6 +30,7 @@ var DEBUG = false,
 '         console.log("Error", oXHR.statusText);' +
 '     } }' +
 '   };' +
+'   setTimeout(function () { oXHR.abort(); }, 60*1000);' +
 '   oXHR.send(null);' +
 '  } else {' +
 '    alert("You have to be a registered user to be able to alert the developer.");' +
@@ -37,8 +38,25 @@ var DEBUG = false,
 '}';
 
 
-if (typeof window.uneval === 'undefined') {
-  window.uneval = function (a) {
+function ez_format_link(p, url){
+  if (!p) return url;
+  if (p.substr(0,1) === '.') {
+    var i, ss = '', s = url.split('/');
+    for (i = 0; i < s.length; i += 1) {
+      ss += s[i];
+      if (i === 2) {
+        ss += p;
+      }
+      ss += '/';
+    }
+    return ss;
+  } else {
+    return (p + url);
+  }
+}
+
+if (typeof uneval === 'undefined') {
+  var uneval = function (a) {
     return ( JSON.stringify(a) ) || '';
   };
 }
@@ -57,12 +75,140 @@ function trim(s) { return ( s || '' ).replace( /^\s+|\s+$/g, '' ); }
 function a_proxy(name, data) {
   DEBUG && console.log(name + ': sendRequest to global.html');
   safari.self.tab.dispatchMessage(name, data);
+  // _port.PostMessage
+}
+
+function process_orNSFC() {
+  var i, len, ele, doi, prjID, b;
+  for (i = 0, len = t('div').length; i < len; i += 1) {
+    ele = t('div')[i];
+    if (ele.className !== 'col-1')  continue;
+    if (ele.textContent === 'DOI') {
+      doi = trim( t('div')[i+1].textContent );
+      DEBUG && console.log('>>>>>>>>>> DOI on or.nsfc page: ' + doi);
+      continue;
+    }
+    if (ele.textContent === 'Project ID') {
+      prjID = trim( t('div')[i+1].textContent );
+      DEBUG && console.log('>>>>>>>>>> Project ID from or.nsfc: ' + prjID);
+      continue;
+    }
+    if (doi && prjID)  break;
+  }
+  if (doi && doipattern.test(doi)) {
+    a_proxy('from_orNSFC', [doi, prjID]);
+    b = page_d.createElement('div');
+    b.innerHTML = '<div id="thepaperlink_bar" style="position:relative;top:-552px;float:right;z-index:999;font-size:90%;"></div>';
+    $('item-right').appendChild(b);
+  }
+}
+
+function process_dxy() {
+  var i, len, ele,
+      pmid = $('pmid').value;
+  if (pmid && pmid === '' + parseInt(pmid, 10)) {
+    a_proxy('from_dxy', pmid);
+  }
+  for (i = 0, len = t('div').length; i < len; i += 1) {
+    ele = t('div')[i];
+    if (ele.className === 'setting') {
+      ele.setAttribute('id', 'thepaperlink_bar');
+      break;
+    }
+  }
+}
+
+function process_f1000() {
+  var i, len, pmid = '',
+      f_v = 0,
+      fid = parseInt(page_url.split('://f1000.com/prime/')[1], 10);
+  for (i = 0; i < t('meta').length; i += 1) {
+    if (t('meta')[i].getAttribute('name') === 'citation_pmid') {
+      pmid = t('meta')[i].getAttribute('content');
+    }
+  }
+  for (i = 0, len = t('div').length; i < len; i += 1) {
+    if (t('div')[i].className === 'articleFactor' && t('div')[i-1].id === 'article') {
+      f_v = parseInt(t('div')[i].textContent, 10);
+      // t('div')[i+3].setAttribute('id', '_thepaperlink_div'); // hidden tootip
+    }
+  }
+  if (pmid && f_v && fid) { // require valid f1000.com login
+    a_proxy('from_f1000', [pmid, fid, f_v]);
+  } else {
+    DEBUG && console.log('>> process_f1000: ' +
+        pmid + ',' + fid + ',' + f_v);
+  }
+}
+
+function order_gs() {
+  var i, len, tobe = [], nodes = [],
+      lists = $('_thepaperlink_order_lists').textContent.split(';');
+  if ($('_thepaperlink_order_status').textContent === '0') {
+    if (lists[1] === lists[0]) {
+      tobe = lists[2].split(',');
+      $('_thepaperlink_order_status').textContent = '2';
+    } else {
+      tobe = lists[1].split(',');
+      $('_thepaperlink_order_status').textContent = '1';
+    }
+  } else if ($('_thepaperlink_order_status').textContent === '1') {
+    tobe = lists[2].split(',');
+    $('_thepaperlink_order_status').textContent = '2';
+  } else {
+    tobe = lists[0].split(',');
+    $('_thepaperlink_order_status').textContent = '0';
+  }
+  $('gs_ccl').style.display = 'none';
+  for (i = 0, len = tobe.length; i < len; i += 1) {
+    nodes.push( $('_thepaperlink_' + tobe[i]) );
+    $('gs_ccl').removeChild( $('_thepaperlink_' + tobe[i]) );
+  }
+  for (i = 0, len = nodes.length; i < len; i += 1) {
+    $('gs_ccl').insertBefore(nodes[i], $('_thepaperlink_pos0'));
+  }
+  nodes = null;
+  $('gs_ccl').style.display = 'block';
+}
+
+function process_googlescholar() {
+  var i, ilen, j, jlen, tmp, nodes = $('gs_ccl').childNodes, a, b, c, d = [];
+  for (i = 0, ilen = nodes.length; i < ilen; i += 1) {
+    if (nodes[i].className === 'gs_alrt_btm') {
+      nodes[i].setAttribute('id', '_thepaperlink_pos0');
+      continue;
+    }
+    a = nodes[i].lastChild;
+    if (!a) { continue; }
+    for (j = 0, jlen = a.childNodes.length; j < jlen; j += 1) {
+      if (a.childNodes[j].className === 'gs_fl') {
+        b = a.childNodes[j].textContent; // class: gs_r -> gs_ri -> gs_fl
+        if (b.substr(0, 9) === 'Cited by ') {
+          c = parseInt(b.substr(9,7), 10);
+          nodes[i].setAttribute('id', '_thepaperlink_' + c);
+          d.push(c);
+        }
+        break;
+      }
+    }
+  }
+  if (d.length > 0) {
+    tmp = page_d.createElement('div');
+    tmp.setAttribute('style', 'float:right;cursor:pointer');
+    tmp.innerHTML = '&nbsp;&nbsp;<span id="_thepaperlink_order_gs">[order the results, v' +
+        '<span id="_thepaperlink_order_status">0</span>]</span>' +
+        '<span id="_thepaperlink_order_lists" style="display:none">' +
+        d.join(',') + ';' +
+        d.sort(function(u,v){return v-u;}).join(',') + ';' +
+        d.sort(function(u,v){return u-v;}).join(',') + '</span>';
+    $('gs_ab_md').appendChild(tmp);
+    $('_thepaperlink_order_gs').onclick = function () { order_gs(); };
+  }
 }
 
 function parse_id(a) { // pubmeder code
   var regpmid = /pmid\s*:?\s*(\d+)\s*/i, 
     regdoi = /doi\s*:?\s*/i,
-    doipattern = /(\d{2}\.\d{4}\/[a-zA-Z0-9\.\/\)\(-]+\w)\s*\W?/,
     regpmc = /pmcid\s*:?\s*(PMC\d+)\s*/i,
     ID = null;
   if (regpmid.test(a)) {
@@ -79,46 +225,69 @@ function parse_id(a) { // pubmeder code
 function getPmid(zone, num) {
   var a = t(zone)[num].textContent,
     regpmid = /PMID:\s(\d+)\s/,
-    ID, b, c, t_cont, t_strings, t_test, t_title,
-    swf_file = 'http://www.thepaperlink.com/static/clippy.swf'; // support or not?
+    ID, b, c, t_cont, t_strings, t_title, t_i,
+    swf_file = 'http://www.zhaowenxian.com/static/clippy.swf'; // support or not in safari
   DEBUG && console.log(a);
   if (regpmid.test(a)) {
     ID = regpmid.exec(a);
     if (ID[1]) {
       if (t(zone)[num + 1].className.indexOf('rprtnum') > -1) {
         t(zone)[num + 2].setAttribute('id', ID[1]);
-      } else {
-        t(zone)[num - 2].setAttribute('id', ID[1]);
+      } else { // abstract page
+        t(zone)[num - 3].setAttribute('id', ID[1]);
       }
       if (t(zone)[num].className === 'rprt') {
-        t_cont = t(zone)[num + 2].textContent;
-        t_strings = t_cont.split(' [PubMed - ')[0].split('.');
+        t_strings = t(zone)[num + 2].textContent.split('Related citations')[0].split('.');
         t_title = trim( t_strings[0] );
         t_cont = t_title +
-          '.\r\n' + trim( t_strings[1] ) +
-          '.\r\n' + trim( t_strings[2] ) +
-          '. ' + trim( t_strings[3] ) +
-          '. [PMID:' + ID[1] + ']\r\n';
-      } else{
-        t_strings = a.split('.');
-        t_title = trim( t_strings[2] );
+          '.\r\n' + trim( t_strings[1].replace(/\d\./g, '.').replace(/\d,/g, ',') ) +
+          '.\r\n' + trim( t_strings[2] ) + '. ';
+        if ( t_strings[3].indexOf(';') > 0 ) {
+          t_cont += trim( t_strings[3] ).replace(';', '; ') + '.';
+        } else {
+          for (t_i = 3; t_i < t_strings.length; t_i += 1) {
+            if ( t_strings[t_i].indexOf('[Epub ahead') > -1 ) {
+              break;
+            }
+            t_cont += trim( t_strings[t_i] ) + '.';
+            if ( t_strings[t_i+1] && (
+                    t_strings[t_i+1].substr(1,3) === 'pii' || t_strings[t_i+1].substr(1,3) === 'doi'
+                ) ) {
+              t_cont += ' ';
+            }
+          }
+        }
+      } else{ // abstract page
+        t_strings = t(zone)[num+1].textContent.split('.');
+        t_title = trim( t('h1')[1].textContent );
         t_cont = t_title +
-          '.\r\n' + trim( t_strings[3] ) +
-          '.\r\n' + trim( t_strings[0] ) +
-          '. ' + trim( t_strings[1] ) +
-          '. [PMID:' + ID[1] + ']\r\n';
+            '\r\n' + trim( t(zone)[num+2].textContent.replace(/\d\./g, '.').replace(/\d,/g, ',') ) +
+            '\r\n' + trim( t_strings[0] ) + '. ';
+        if ( t_strings[1].indexOf(';') > 0 ) {
+          t_cont += trim( t_strings[1] ).replace(';', '; ') + '.';
+        } else {
+          for (t_i = 1; t_i < t_strings.length; t_i += 1) {
+            if ( t_strings[t_i].indexOf('Epub ') > -1 ) {
+              break;
+            }
+            t_cont += trim( t_strings[t_i] ) + '.';
+            if ( t_strings[t_i+1] && (
+                    t_strings[t_i+1].substr(1,3) === 'pii' || t_strings[t_i+1].substr(1,3) === 'doi'
+                ) ) {
+              t_cont += ' ';
+            }
+          }
+        }
       }
+      t_cont += ' [PMID:' + ID[1] + ']\r\n';
       DEBUG && console.log(t_cont);
       b = page_d.createElement('div');
-      b.innerHTML = '<div style="float:right;z-index:1"><embed src="'
-        + swf_file + '" wmode="transparent" width="110" height="14" quality="high" allowScriptAccess="always" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" FlashVars="text='
-        + t_cont + '" /></div>';
-      //b.innerHTML = '<div style="float:right;z-index:1;cursor:pointer">'
-      //  + '<img class="pl4_clippy" title="copy to clipboard" src="' + clippy_file
-      //  + '" alt="copy" width="14" height="14" />&nbsp;&nbsp;</div>';
-      //b.onclick = function () {
-      //  chrome.extension.sendRequest({t_cont: t_cont});
-      //};
+      b.innerHTML = '<div style="float:right;z-index:1;cursor:pointer">' +
+          '<img class="pl4_clippy" title="copy to clipboard" src="' + clippy_file +
+          '" alt="copy" width="14" height="14" />&nbsp;&nbsp;</div>';
+      b.onclick = function () {
+        a_proxy('t_cont', t_cont);
+      };
       if (t(zone)[num].className === 'rprt') {
         t(zone)[num + 3].appendChild(b);
       } else { // display with abstract
@@ -127,8 +296,8 @@ function getPmid(zone, num) {
       pmids += ',' + ID[1];
       if (a.indexOf('- in process') < 0) {
         c = page_d.createElement('span');
-        c.style.cssText = 'border-left:6px #fccccc solid;padding-left:6px;font-size:11px;';
-        c.innerHTML = 'Cited by: <span id="citedBy' + ID[1] + '">waiting</span>';
+        c.setAttribute('style', 'border-left:6px #fccccc solid;padding-left:6px;font-size:11px');
+        c.innerHTML = 'Cited by: <span id="citedBy' + ID[1] + '">...</span>';
         if (t(zone)[num].className === 'rprt') {
           t(zone)[num + 4].appendChild(c);
         } else { // display with abstract
@@ -141,7 +310,7 @@ function getPmid(zone, num) {
 }
 
 function get_Json(pmids) {
-  var i, ele,
+  var i, len, ele,
     need_insert = 1,
     url = '/api?flash=yes&a=safari1&pmid=' + pmids,
     loading_span = '<span style="font-weight:normal;font-style:italic"> fetching data from "the Paper Link"</span>&nbsp;&nbsp;<img src="' + loading_gif + '" width="16" height="11" alt="loading" />';
@@ -150,12 +319,21 @@ function get_Json(pmids) {
   } else {
     url += '&apikey=';
   }
-  for (i = 0; i < t('h2').length; i += 1) {
+  for (i = 0, len = t('h2').length; i < len; i += 1) {
     ele = t('h2')[i];
     if (ele.className === 'result_count') {
       need_insert = 0;
       ele.setAttribute('id', 'pl4_title');
       old_title = ele.innerHTML;
+      search_result_count = ele.textContent;
+      if (search_result_count.indexOf(' of ') > 0) {
+        search_result_count = parseInt(search_result_count.split(' of ')[1], 10);
+      } else if (search_result_count.indexOf('Results: ') > -1) {
+        search_result_count = parseInt(search_result_count.substr(9, search_result_count.length), 10);
+      } else {
+        search_result_count = 0;
+      }
+      a_proxy({search_term: search_term, search_result_count: search_result_count});
       ele.innerHTML = old_title + loading_span;
     }
   }
@@ -170,14 +348,14 @@ function get_Json(pmids) {
 }
 
 function run() {
-  var i, z;
+  var i, len, z;
   try {
-    search_term = $('search_term').value;
+    search_term = $('term').value; // 2013-3-26
   } catch (err) {
     DEBUG && console.log(err);
   }
-  a_proxy('reset_scholar_count', 1);
-  for (i = 0; i < t('div').length; i += 1) {
+  a_proxy('reset_counts', 1);
+  for (i = 0, len = t('div').length; i < len; i += 1) {
     if (t('div')[i].className === 'rprt' || t('div')[i].className === 'rprt abstract') {
       getPmid('div', i);
     } else if (!search_term && t('div')[i].className === 'print_term') {
@@ -198,15 +376,13 @@ function run() {
   }
 }
 
-function load_thepaperlink_api() {
+function load_thepaperlink_api() { // safari specific
   if (!$('apikey')) {
     setTimeout(load_thepaperlink_api, 500);
     return;
   }
-  var apikey = $('apikey').innerHTML,
-    cloud_op = $('cloud_op').innerHTML;
-  a_proxy('saveAPI', ['', apikey]);
-  a_proxy('save_cloud_op', cloud_op);
+  a_proxy('saveAPI', ['', $('apikey').innerHTML]);
+  a_proxy('save_cloud_op', $('cloud_op').innerHTML);
 }
 
 function bigBoss() {
@@ -216,32 +392,38 @@ function bigBoss() {
   if ($('_thepaperlink_client_modify_it')) {
     $('_thepaperlink_client_modify_it').innerHTML = 'the browser you are using is good for that';
   }
-  if (page_url === 'http://thepaperlink.appspot.com/reg'
-    || page_url === 'https://thepaperlink.appspot.com/reg'
-    || page_url === 'http://pubget-hrd.appspot.com/reg'
-    || page_url === 'https://pubget-hrd.appspot.com/reg'
-    || page_url === 'http://www.thepaperlink.com/reg'
-    || page_url === 'http://www.thepaperlink.net/reg'
-    || page_url === 'http://www.zhaowenxian.com/reg') {
+  if (page_url === 'http://www.thepaperlink.com/reg'
+      || page_url === 'http://www.thepaperlink.com/settings'
+      || page_url === 'http://www.zhaowenxian.com/settings'
+      || page_url === 'http://www.zhaowenxian.com/reg') { // storage data for access the api server
     load_thepaperlink_api(); // strange, just like DOMContentLoaded is not working
     return;
-  } else if (page_url === 'http://pubmeder.appspot.com/registration'
-    || page_url === 'https://pubmeder.appspot.com/registration'
-    || page_url === 'http://pubmeder-hrd.appspot.com/registration'
-    || page_url === 'https://pubmeder-hrd.appspot.com/registration'
-    || page_url === 'http://www.pubmeder.com/registration'
-    || page_url === 'http://1.zhaowenxian.com/registration') {
-    var email = $('currentUser').innerHTML,
-      apikey = $('apikey_pubmeder').innerHTML;
-    a_proxy('saveAPI', [email, apikey]);
+  } else if (page_url === 'http://www.pubmeder.com/registration'
+      || page_url === 'http://pubmeder-hrd.appspot.com/registration'
+      || page_url === 'https://pubmeder-hrd.appspot.com/registration'
+      || page_url === 'http://1.zhaowenxian.com/registration') { // storage data for access the bookmark server
+    a_proxy('saveAPI', [ $('currentUser').innerHTML,
+                         $('apikey_pubmeder').innerHTML ]);
     return;
-  } else if (page_url.indexOf('/static/about_us.html') > 0) {
+  } else if (page_url.indexOf('/static/about_us.html') > 0) { // safari or fx
     a_proxy('fill_about_us_page', 1);
     return;
   } else if (page_url.indexOf('://www.thepaperlink.com/oauth') > 0) {
     var content = $('r_content').innerHTML,
       service = $('r_success').innerHTML;
     a_proxy('saveOAuthStatus', [content, service]);
+    return;
+  } else if (page_url.indexOf('://f1000.com/prime/') > 0) {
+    process_f1000();
+    return;
+  } else if (page_url.indexOf('://scholar.google.com/scholar?') > 0) {
+    process_googlescholar();
+    return;
+  } else if (page_url.indexOf('://pubmed.cn/') > 0) {
+    process_dxy();
+    return;
+  } else if (page_url.indexOf('://or.nsfc.gov.cn/') > 0) {
+    process_orNSFC();
     return;
   } else if (page_url.indexOf('://www.ncbi.nlm.nih.gov/pubmed') === -1
     && page_url.indexOf('://www.ncbi.nlm.nih.gov/sites/entrez?db=pubmed&') === -1
@@ -273,7 +455,16 @@ function gotMessage(msg) {
     alert(msg.message);
     break;
 
-  case 'except':
+  case 'paperlink2':
+    if (!$('paperlink2_display')) {
+      var peaks = page_d.createElement('script');
+      peaks.setAttribute('type', 'text/javascript');
+      peaks.setAttribute('src', msg.message + '?y=' + (Math.random()));
+      page_d.body.appendChild(peaks);
+    }
+    break;
+
+    case 'except':
     if (!search_term) {
       search_term = page_url.split('/pubmed/')[1];
     }
@@ -284,22 +475,12 @@ function gotMessage(msg) {
     alert_script.type = 'text/javascript';
     alert_script.text = alert_js;
     page_d.body.appendChild(alert_script);
+    // alert_dev, is different from chrome
     $('pl4_title').innerHTML = old_title +
-      ' <span style="font-size:14px;font-weight:normal;color:red">Error! Try ' +
-      '<button onclick="window.location.reload()">reload</button> or ' +
-      '<b>Search</b> <a href="http://www.thepaperlink.com/?q=' + search_term +
-      '" target="_blank">the Paper Link</a>' +
-      '<span style="float:right;cursor:pointer" id="thepaperlink_alert" onclick="alert_dev(\'' +
-      msg.message + '\')">&lt;!&gt;</span></span>';
-    break;
-
-  case 'paperlink2':
-    if (!$('paperlink2_display')) {
-      var peaks = page_d.createElement('script');
-      peaks.setAttribute('type', 'text/javascript');
-      peaks.setAttribute('src', msg.message + '?y=' + (Math.random()));
-      page_d.body.appendChild(peaks);
-    }
+      ' <span style="font-size:12px;font-weight:normal;color:red;background-color:yellow">' +
+      'Error!&nbsp;&nbsp;' + msg.message[0] +
+      '&nbsp;<a href="http://www.zhaowenxian.com/?q=' + search_term +
+      '" target="_blank">[?]</a></span>';
     break;
 
   case 'js':
@@ -344,7 +525,11 @@ function gotMessage(msg) {
           if (msg.message[1] === '://') {
             e.parentNode.removeChild(e);
           } else {
-            e.innerText = 'pdf file';
+            if (msg.message[0].indexOf('_scihub') > -1) {
+              e.innerText = 'sci-hub';
+            } else {
+              e.innerText = 'pdf file';
+            }
             e.href = uneval_trim(msg.message[1]);
           }
         } else {
@@ -361,8 +546,16 @@ function gotMessage(msg) {
     }
     break;
 
+  case 'search_trend':
+    var hook = $('myncbiusername').textContent;
+    $('myncbiusername').innerHTML = '<span style="color:yellow">' + msg.message[0] +
+        '</span>&nbsp;&nbsp;&nbsp;&nbsp;' + hook;
+    $('myncbiusername').style.display = 'inline';
+    //sendResponse({});
+    break;
+
   case 'tj':
-    var div, div_html, i, j, k, pmid, s2,
+    var div, div_html, tmp, i, j, k, pmid, s2,
       r = msg.message[0],
       tpl = msg.message[1],
       pubmeder = msg.message[2],
@@ -371,6 +564,7 @@ function gotMessage(msg) {
       cloud_op = msg.message[5],
       p = msg.message[6],
       bookmark_div = '<div id="css_loaded" class="thepaperlink" style="margin-left:10px;font-size:80%;font-weight:normal;cursor:pointer"> ';
+      // content.css
 
     if (r && r.error) {
       $('pl4_title').innerHTML = old_title +
@@ -378,16 +572,32 @@ function gotMessage(msg) {
         uneval(r.error) + '</span>';
       break;
     }
+
+    if (r.to_other_sites) { // dxy, f1000
+      // content.css
+      div = page_d.createElement('div');
+      div.className = 'thepaperlink';
+      div_html = '<a class="thepaperlink-home" href="' + r.uri + '/?q=pmid:' +
+          r.pmid + '" target="_blank">the paper link</a>';
+      div_html += r.extra;
+      div.innerHTML = div_html;
+      $(r.to_other_sites).appendChild(div);
+      break;
+    }
+
     if (!r || !r.count) {
       DEBUG && console.log('tj with nothing, oops - should never happen');
       break;
     }
+
+    // if (!$('css_loaded')) // content.css
+
     if (pubmeder) {
       bookmark_div += '<span id="thepaperlink_saveAll" onclick="saveIt_pubmeder(\'' +
         pmids + '\',\'' + save_key + '\',\'' +
         save_email + '\')">pubmeder&nbsp;all</span></div>';
     } else {
-      bookmark_div += 'Wanna save what you are reading? Login<a href="http://www.pubmeder.com/registration" target="_blank">PubMed-er</a></div>';
+      bookmark_div += 'save what you are reading? try <a href="http://www.pubmeder.com/registration" target="_blank">PubMed-er</a></div>';
     }
     if (old_title) {
       $('pl4_title').innerHTML = old_title + bookmark_div;
@@ -407,34 +617,48 @@ function gotMessage(msg) {
       div = page_d.createElement('div');
       div.className = 'thepaperlink';
       div_html = '<a class="thepaperlink-home" id="pl4me_' + pmid +
-        '" href="http://www.thepaperlink.com/?q=pmid:' +
+        '" href="h' + r.uri + '/?q=pmid:' +
         pmid + '" target="_blank">the Paper Link</a>: ';
       if (r.item[i].slfo && r.item[i].slfo !== '~' && parseFloat(r.item[i].slfo) > 0) {
-        div_html += '<span>impact&nbsp;' + uneval_trim(r.item[i].slfo) + '</span>';
+        tmp = '<span>impact&nbsp;' + uneval_trim(r.item[i].slfo) + '</span>';
+        div_html += tmp;
       }
       if (r.item[i].pdf) {
-        div_html += '<a id="thepaperlink_pdf' + pmid +
-          '" class="thepaperlink-green" href="' + p + uneval_trim(r.item[i].pdf) +
+        tmp = '<a id="thepaperlink_pdf' + pmid +
+          '" class="thepaperlink-green" href="' +
+          ez_format_link(p, uneval_trim(r.item[i].pdf)) +
           '" target="_blank">direct&nbsp;pdf</a>';
+        div_html += tmp;
       } else if (r.item[i].pii) {
         a_proxy('pii_link', [pmid, r.item[i].pii]);
-        div_html += '<a id="thepaperlink_pdf' + pmid + '" href="#" target="_blank"></a>';
+        tmp = '<a id="thepaperlink_pdf' + pmid + '" href="#" target="_blank"></a>';
+        div_html += tmp;
       }
       if (r.item[i].pmcid) {
-        div_html += '<a id="thepaperlink_pmc' + pmid +
+        tmp = '<a id="thepaperlink_pmc' + pmid +
           '" href="https://www.ncbi.nlm.nih.gov/pmc/articles/' +
-          uneval_trim(r.item[i].pmcid) + '/?tool=thepaperlinkClient" target="_blank">open&nbsp;access</a>';
+          uneval_trim(r.item[i].pmcid) + '/?tool=thepaperlink_safari" target="_blank">open&nbsp;access</a>';
+        div_html += tmp;
       }
       if (r.item[i].doi) {
-        div_html += '<a id="thepaperlink_doi' + pmid +
-          '" href="' + p + 'http://dx.doi.org/' + uneval_trim(r.item[i].doi) +
-          '" target="_blank">publisher</a>';
+        a_proxy('doi_link', [pmid, r.item[i].doi]);
+        tmp = '<a id="thepaperlink_doi' + pmid +
+          '" href="' + ez_format_link(p,
+              'http://dx.doi.org/' + uneval_trim(r.item[i].doi)
+          ) + '" target="_blank">publisher</a><a id="thepaperlink_scihub' + pmid +
+            '" href="http://dx.doi.org.sci-hub.org/' + uneval_trim(r.item[i].doi) +
+            '" target="_blank">&#x219d;</a>';
+        div_html += tmp;
       } else if (r.item[i].pii) {
-        div_html += '<a id="thepaperlink_doi' + pmid +
-          '" href="' + p + 'http://linkinghub.elsevier.com/retrieve/pii/' +
-          uneval_trim(r.item[i].pii) + '" target="_blank">publisher</a>';
+        tmp = '<a id="thepaperlink_pii' + pmid +
+          '" href="' + ez_format_link(p,
+              'http://linkinghub.elsevier.com/retrieve/pii/' + uneval_trim(r.item[i].pii)
+          ) + '" target="_blank">publisher</a><a id="thepaperlink_scihub' + pmid +
+            '" href="http://linkinghub.elsevier.com.sci-hub.org/retrieve/pii/' + uneval_trim(r.item[i].pii) +
+            '" target="_blank">&#x219d;</a>';
+        div_html += tmp;
       }
-      if (r.item[i].pii && $('citedBy' + pmid)) {
+      if (r.item[i].pii && $('citedBy' + pmid)) { // insert_span
         s2 = page_d.createElement('span');
         s2.innerHTML = '; <span id="pl4_scopus' + pmid + '"></span> <a href="' +
           p + 'http://linkinghub.elsevier.com/retrieve/pii/' +
@@ -442,21 +666,26 @@ function gotMessage(msg) {
         $('citedBy' + pmid).parentNode.appendChild(s2);
       }
       if (r.item[i].f_v && r.item[i].fid) {
-        div_html += '<a id="thepaperlink_f' + pmid +
-          '" class="thepaperlink-red" href="' + p + 'http://f1000.com/' +
-          uneval_trim(r.item[i].fid) + '" target="_blank">f1000&nbsp;score&nbsp;' +
+        tmp = '<a id="thepaperlink_f' + pmid +
+          '" class="thepaperlink-red" href="' +
+          ez_format_link(p,
+              'http://f1000.com/' + uneval_trim(r.item[i].fid)
+          ) + '" target="_blank">f1000&nbsp;star&nbsp;' +
           uneval_trim(r.item[i].f_v) + '</a>';
+        div_html += tmp;
       }
       if (pubmeder || cloud_op) {
-        div_html += '<span id="thepaperlink_save' + pmid +
+        tmp = '<span id="thepaperlink_save' + pmid +
           '" class="thepaperlink-home" onclick="saveIt(\'' + pmid +
           '\',\'' + save_key + '\',\'' + save_email + '\',\'' +
           tpl + '\',\'' + cloud_op + '\')">save&nbsp;it</span>';
+        div_html += tmp;
       }
       if (tpl) {
-        div_html += '<span id="thepaperlink_rpt' + pmid +
+        tmp = '<span id="thepaperlink_rpt' + pmid +
           '" class="thepaperlink-home" onclick="show_me_the_money(\'' +
           pmid + '\',\'' + tpl + '\')">&hellip;</span>';
+        div_html += tmp;
       }
       if (tpl && r.item[i].pdf) {
         div_html += '<span class="thepaperlink_Off" id="thepaperlink_hidden' + pmid + '"></span>';
@@ -497,7 +726,7 @@ function gotMessage(msg) {
     DEBUG && console.log('onePage_calls: ' + onePage_calls);
     break;
 
-  case 'about_us_page':
+  case 'about_us_page': // safari or fx
     if (!$('client_title') || !$('client_content')) {
       break;
     }
